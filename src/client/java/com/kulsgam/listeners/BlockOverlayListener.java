@@ -112,85 +112,64 @@ public class BlockOverlayListener {
         RenderSettings overlaySettings = config.overlayRender;
         RenderSettings outlineSettings = config.outlineRender;
 
+        int overlayStartColor = overlaySettings.getStart();
+        int overlayEndColor = overlaySettings.getEnd();
+        int outlineStartColor = outlineSettings.getStart();
+        int outlineEndColor = outlineSettings.getEnd();
+
         boolean overlay = overlaySettings.visible;
         boolean outline = outlineSettings.visible;
-
-        if (!overlay && !outline) return;
+        int outlineColor = outlineSettings.getStart();
 
         HitResult hitResult = client.crosshairTarget;
         if (!(hitResult instanceof BlockHitResult blockHit)) return;
         if (client.world == null) return;
 
         BlockPos blockPos = blockHit.getBlockPos();
-        Direction side = (config.renderMode == RenderMode.SIDE) ? blockHit.getSide() : null;
+        Direction side = config.renderMode == RenderMode.SIDE ? blockHit.getSide() : null;
 
         VoxelShape shape = blockState.getOutlineShape(client.world, blockPos);
         if (shape.isEmpty()) return;
 
-        // 1.21.11 camera/matrices access (your current approach)
+        // 1.21.11 accessors
         Vec3d camera = context.worldState().cameraRenderState.pos;
         MatrixStack matrices = context.matrices();
 
         matrices.push();
         matrices.translate(-camera.x, -camera.y, -camera.z);
 
-        // ---- GL state: blend + (optional) depthless ----
-        GL14.glEnable(GL14.GL_BLEND);
-//        GlStateManager.glBlendFuncSeparate(
-//                GL14.GL_SRC_ALPHA, GL14.GL_ONE_MINUS_SRC_ALPHA,
-//                GL14.GL_ONE, GL14.GL_ONE_MINUS_SRC_ALPHA
-//        );
-        GL14.glBlendFuncSeparate(
-                GL14.GL_SRC_ALPHA, GL14.GL_ONE_MINUS_SRC_ALPHA,
-                GL14.GL_ONE, GL14.GL_ONE_MINUS_SRC_ALPHA
-        );
+        VertexConsumerProvider consumers = context.consumers();
 
-        boolean depthWasEnabled = GL14.glIsEnabled(GL14.GL_DEPTH_TEST);
-        if (config.depthless) {
-            GL14.glDisable(GL14.GL_DEPTH_TEST);
-        }
+        // Filled overlay layer (exists in Yarn 1.21.11)
+        VertexConsumer fillConsumer = consumers.getBuffer(RenderLayers.debugFilledBox());
 
-        double pad = 0.002;
+        for (Box box : shape.getBoundingBoxes()) {
+            Box worldBox = box.offset(blockPos).expand(0.002);
 
-        // ---- Filled overlay pass (QUADS) ----
-        if (overlay) {
-            int fillColor = overlaySettings.getStart(); // keep it simple; you can gradient later
-            BufferBuilder buf = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-
-            for (Box box : shape.getBoundingBoxes()) {
-                Box worldBox = box.offset(blockPos).expand(pad);
-                // If you want "SIDE" mode to only fill one face, handle 'side' inside your emitter.
-                RenderUtils.emitBoxQuads(matrices, buf, worldBox, side, fillColor);
+            // ---- FILL (your overlay) ----
+            if (overlay) {
+                // If you still want side-only fill, you must implement that in your emitter.
+                // For now: fill whole box.
+                // TODO: fill side only
+                RenderUtils.emitBoxQuads(matrices, fillConsumer, worldBox, side, overlayStartColor, overlayEndColor);
             }
 
-            BufferRenderer.drawWithGlobalProgram(buf.end());
-        }
+            // ---- OUTLINE ----
+            if (outline) {
+                VertexConsumer lineConsumer = consumers.getBuffer(RenderLayers.lines());
 
-        // ---- Outline pass (LINES) ----
-        if (outline) {
-            if (config.thickness > 1.0) {
-                GL14.glLineWidth((float) config.thickness);
+                // Outline the whole voxel shape, offset to the block position in world space.
+                // No need to translate matrices for blockPos; we pass offsets directly.
+                VertexRendering.drawOutline(
+                        matrices,
+                        lineConsumer,
+                        shape,
+                        blockPos.getX(), blockPos.getY(), blockPos.getZ(),
+                        outlineColor,
+                        (float) config.thickness
+                );
             }
-
-            int lineColor = outlineSettings.getStart(); // keep it simple; gradient later
-            BufferBuilder buf = Tessellator.getInstance().begin(VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR);
-
-            for (Box box : shape.getBoundingBoxes()) {
-                Box worldBox = box.offset(blockPos).expand(pad);
-                RenderUtils.emitBoxLines(matrices, buf, worldBox, lineColor);
-            }
-
-            BufferRenderer.drawWithGlobalProgram(buf.end());
-
-            GL14.glLineWidth(1.0f);
         }
-
-        // ---- restore depth ----
-        if (config.depthless && depthWasEnabled) {
-            GL14.glEnable(GL14.GL_DEPTH_TEST);
-        }
-
-        GL14.glDisable(GL14.GL_BLEND);
 
         matrices.pop();
     }
