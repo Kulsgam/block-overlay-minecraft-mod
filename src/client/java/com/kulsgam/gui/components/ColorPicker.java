@@ -13,6 +13,8 @@ import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
+
 import java.util.function.IntConsumer;
 
 public class ColorPicker extends ClickableWidget {
@@ -34,11 +36,15 @@ public class ColorPicker extends ClickableWidget {
     public ColorPicker(int x, int y, int width, int height, Color hue, IntConsumer onChange) {
         super(x, y, width, height, Text.literal(""));
         this.client = MinecraftClient.getInstance();
+        this.onChange = onChange;
+
+        this.textureId = COLOR_PICKER_TEXTURE_ID;
+
+        // start selector in top-left of widget by default (or center, your choice)
         this.selectorX = x;
         this.selectorY = y;
-        this.onChange = onChange;
+
         setHue(hue);
-        textureId = COLOR_PICKER_TEXTURE_ID;
     }
 
     @Override
@@ -119,16 +125,29 @@ public class ColorPicker extends ClickableWidget {
             texture.setImage(backgroundImage);
             texture.upload();
         }
-        updateColor(selectorX, selectorY);
     }
 
     private void updateColor(int mouseX, int mouseY) {
+        // If we're not laid out yet, don't compute color.
+        int w = getWidth();
+        int h = getHeight();
+        if (w <= 0 || h <= 0 || backgroundImage == null) {
+            // Keep selector clamped to widget origin; color stays unchanged until first real render/click.
+            selectorX = getX();
+            selectorY = getY();
+            return;
+        }
+
         selectorX = mouseX - 3;
         selectorY = mouseY - 3;
         checkBounds();
-        double scale = (double) SIZE / (double) getWidth();
-        int x = (int) ((selectorX - getX()) * scale);
-        int y = (int) ((selectorY - getY()) * scale);
+
+        double scaleX = (double) SIZE / (double) w;
+        double scaleY = (double) SIZE / (double) h;
+
+        int x = MathHelper.clamp((int) ((selectorX - getX()) * scaleX), 0, SIZE - 1);
+        int y = MathHelper.clamp((int) ((selectorY - getY()) * scaleY), 0, SIZE - 1);
+
         color = fromAbgr(backgroundImage.getColorArgb(x, y));
         if (onChange != null) {
             onChange.accept(color);
