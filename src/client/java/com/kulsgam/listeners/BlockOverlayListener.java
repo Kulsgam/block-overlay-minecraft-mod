@@ -6,6 +6,7 @@ import com.kulsgam.gui.BlockOverlayScreen;
 import com.kulsgam.utils.Animator;
 import com.kulsgam.utils.RenderUtils;
 import com.kulsgam.utils.enums.RenderMode;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -29,6 +30,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.client.render.state.OutlineRenderState;
+//import com.mojang.blaze3d.opengl.GlStateManager;
+import org.lwjgl.opengl.GL14;
 import org.slf4j.Logger;
 
 import java.util.Set;
@@ -104,12 +107,14 @@ public class BlockOverlayListener {
     public void tick(MinecraftClient client) {
         shadersListener.tick();
     }
+
     private void renderBlockOverlay(WorldRenderContext context, BlockState blockState, Entity entity, float tickDelta) {
         RenderSettings overlaySettings = config.overlayRender;
         RenderSettings outlineSettings = config.outlineRender;
 
         boolean overlay = overlaySettings.visible;
         boolean outline = outlineSettings.visible;
+
         if (!overlay && !outline) return;
 
         HitResult hitResult = client.crosshairTarget;
@@ -117,55 +122,78 @@ public class BlockOverlayListener {
         if (client.world == null) return;
 
         BlockPos blockPos = blockHit.getBlockPos();
-        Direction side = config.renderMode == RenderMode.SIDE ? blockHit.getSide() : null;
+        Direction side = (config.renderMode == RenderMode.SIDE) ? blockHit.getSide() : null;
 
         VoxelShape shape = blockState.getOutlineShape(client.world, blockPos);
         if (shape.isEmpty()) return;
 
-        int overlayStartColor = overlaySettings.getStart();
-        int overlayEndColor   = overlaySettings.getEnd();
-        int outlineStartColor = outlineSettings.getStart();
-        int outlineEndColor   = outlineSettings.getEnd();
-
+        // 1.21.11 camera/matrices access (your current approach)
         Vec3d camera = context.worldState().cameraRenderState.pos;
         MatrixStack matrices = context.matrices();
 
         matrices.push();
         matrices.translate(-camera.x, -camera.y, -camera.z);
 
-        VertexConsumerProvider consumers = context.consumers();
+        // ---- GL state: blend + (optional) depthless ----
+        GL14.glEnable(GL14.GL_BLEND);
+//        GlStateManager.glBlendFuncSeparate(
+//                GL14.GL_SRC_ALPHA, GL14.GL_ONE_MINUS_SRC_ALPHA,
+//                GL14.GL_ONE, GL14.GL_ONE_MINUS_SRC_ALPHA
+//        );
+        GL14.glBlendFuncSeparate(
+                GL14.GL_SRC_ALPHA, GL14.GL_ONE_MINUS_SRC_ALPHA,
+                GL14.GL_ONE, GL14.GL_ONE_MINUS_SRC_ALPHA
+        );
 
-        // Depthless switch: use debugFilledBox (through-walls) vs debugQuads (normal depth)
-        // Both exist on 1.21.11 RenderLayers. :contentReference[oaicite:2]{index=2}
-        VertexConsumer fillConsumer = overlay
-                ? consumers.getBuffer(config.depthless ? RenderLayers.debugFilledBox() : RenderLayers.debugQuads())
-                : null;
-
-        // Lines layer exists. Thickness is set via VertexConsumer.lineWidth(thickness). :contentReference[oaicite:3]{index=3}
-        VertexConsumer lineConsumer = outline
-                ? consumers.getBuffer(RenderLayers.lines()).lineWidth((float) config.thickness)
-                : null;
-
-        double padding = 0.002;
-
-        for (Box box : shape.getBoundingBoxes()) {
-            Box worldBox = box.offset(blockPos).expand(padding);
-
-            RenderUtils.drawBlock(
-                    matrices,
-                    worldBox,
-                    side,
-                    overlayStartColor, overlayEndColor,
-                    outlineStartColor, outlineEndColor,
-                    overlay, outline,
-                    fillConsumer, lineConsumer,
-                    this.logger
-            );
+        boolean depthWasEnabled = GL14.glIsEnabled(GL14.GL_DEPTH_TEST);
+        if (config.depthless) {
+            GL14.glDisable(GL14.GL_DEPTH_TEST);
         }
+
+        double pad = 0.002;
+
+        // ---- Filled overlay pass (QUADS) ----
+        if (overlay) {
+            int fillColor = overlaySettings.getStart(); // keep it simple; you can gradient later
+            BufferBuilder buf = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+
+            for (Box box : shape.getBoundingBoxes()) {
+                Box worldBox = box.offset(blockPos).expand(pad);
+                // If you want "SIDE" mode to only fill one face, handle 'side' inside your emitter.
+                RenderUtils.emitBoxQuads(matrices, buf, worldBox, side, fillColor);
+            }
+
+            BufferRenderer.drawWithGlobalProgram(buf.end());
+        }
+
+        // ---- Outline pass (LINES) ----
+        if (outline) {
+            if (config.thickness > 1.0) {
+                GL14.glLineWidth((float) config.thickness);
+            }
+
+            int lineColor = outlineSettings.getStart(); // keep it simple; gradient later
+            BufferBuilder buf = Tessellator.getInstance().begin(VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR);
+
+            for (Box box : shape.getBoundingBoxes()) {
+                Box worldBox = box.offset(blockPos).expand(pad);
+                RenderUtils.emitBoxLines(matrices, buf, worldBox, lineColor);
+            }
+
+            BufferRenderer.drawWithGlobalProgram(buf.end());
+
+            GL14.glLineWidth(1.0f);
+        }
+
+        // ---- restore depth ----
+        if (config.depthless && depthWasEnabled) {
+            GL14.glEnable(GL14.GL_DEPTH_TEST);
+        }
+
+        GL14.glDisable(GL14.GL_BLEND);
 
         matrices.pop();
     }
-
 
     private void renderPreview(WorldRenderContext context, Entity entity, float tickDelta) {
         Vec3d look = entity.getRotationVec(tickDelta).multiply(2.0);
