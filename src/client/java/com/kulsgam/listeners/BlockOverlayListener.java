@@ -17,9 +17,6 @@ import net.minecraft.client.render.block.BlockRenderManager;
 import net.minecraft.client.render.state.OutlineRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.ItemStack;
 import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -32,7 +29,6 @@ import java.util.Set;
 public class BlockOverlayListener {
     private final MinecraftClient client;
     private final BlockOverlayConfig config;
-    private final ShadersListener shadersListener;
     private final Logger logger;
     private final Animator blockAnimator = new Animator(350.0);
     private final Set<Block> plantBlocks = Set.of(
@@ -59,10 +55,9 @@ public class BlockOverlayListener {
     );
     private boolean blockShrinking;
 
-    public BlockOverlayListener(MinecraftClient client, BlockOverlayConfig config, ShadersListener shadersListener, Logger logger) {
+    public BlockOverlayListener(MinecraftClient client, BlockOverlayConfig config, Logger logger) {
         this.client = client;
         this.config = config;
-        this.shadersListener = shadersListener;
         this.logger = logger;
     }
 
@@ -95,10 +90,6 @@ public class BlockOverlayListener {
 
         float tickDelta = client.getRenderTickCounter().getTickProgress(false);
         renderBlockOverlay(context, blockState, entity, tickDelta);
-    }
-
-    public void tick(MinecraftClient client) {
-        shadersListener.tick();
     }
 
     private void renderBlockOverlay(WorldRenderContext context, BlockState blockState, Entity entity, float tickDelta) {
@@ -226,31 +217,6 @@ public class BlockOverlayListener {
             return null;
         }
         return blockState;
-    }
-
-    private boolean canRenderBlockOverlay() {
-        Entity entity = client.getCameraEntity();
-        if (!(entity instanceof PlayerEntity player)) {
-            return true;
-        }
-        if (player.getAbilities().creativeMode) {
-            return true;
-        }
-        ItemStack heldItem = player.getMainHandStack();
-        if (!(client.crosshairTarget instanceof BlockHitResult blockHit)) {
-            return false;
-        }
-        BlockPos blockPos = blockHit.getBlockPos();
-        boolean canPlace = heldItem.getItem() instanceof BlockItem; // TODO: Maybe remove this if issues occur
-
-        if (client.world != null) {
-            BlockState blockState = client.world.getBlockState(blockPos);
-            boolean canInteract = blockState.hasBlockEntity();
-        } else {
-            logger.error("client.world is null");
-        }
-
-        return canPlace;
     }
 
     public void resetAnimation(boolean blockShrinking) {

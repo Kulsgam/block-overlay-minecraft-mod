@@ -6,6 +6,8 @@ package com.kulsgam.mixin;
 
 import com.kulsgam.BlockOverlayClient;
 import com.kulsgam.config.BlockOverlayConfig;
+import com.kulsgam.config.RenderSettings;
+import com.kulsgam.utils.ColorUtils;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.state.OutlineRenderState;
@@ -18,8 +20,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.awt.*;
 
 @Mixin(WorldRenderer.class)
 public class LevelRendererMixin {
@@ -46,6 +46,8 @@ public class LevelRendererMixin {
         }
 
         BlockOverlayConfig config = BlockOverlayClient.instance.getConfig();
+        RenderSettings fillSettings = config.fillRender;
+        RenderSettings outlineSettings = config.outlineRender;
 
         matrices.push();
         matrices.translate(
@@ -61,38 +63,24 @@ public class LevelRendererMixin {
                 getBufferBuilders().getEntityVertexConsumers();
 
         // Render fill first (if enabled)
-        if (config.isFillEnabled()) {
-            renderFill(bufferSource, shape, matrix, config);
+        if (fillSettings.visible) {
+            renderFill(bufferSource, shape, matrix, fillSettings);
         }
 
         // Render outline - get our own line consumer since we cancelled vanilla setup
-        renderOutline(bufferSource, shape, matrix, config);
+        renderOutline(bufferSource, shape, matrix, outlineSettings, config.thickness);
 
         matrices.pop();
     }
 
     @Unique
-    private void renderOutline(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, Matrix4f matrix, BlockOverlayConfig config) {
-        float red, green, blue, alpha;
-
-        if (config.isOutlineChromaEnabled()) {
-            float speed = (float) config.getOutlineChromaSpeed();
-            float timeInSeconds = (System.currentTimeMillis() % 100000L) / 1000.0f;
-            float hue = (timeInSeconds * speed / 10.0f) % 1.0f;
-            Color color = Color.getHSBColor(hue, 1.0f, 1.0f);
-
-            red = color.getRed() / 255.0f;
-            green = color.getGreen() / 255.0f;
-            blue = color.getBlue() / 255.0f;
-        } else {
-            Color color = new Color(config.getOutlineColor(0), true);
-            red = color.getRed() / 255.0f;
-            green = color.getGreen() / 255.0f;
-            blue = color.getBlue() / 255.0f;
-        }
-
-        alpha = (float) config.getOutlineOpacity(0);
-        float lineWidth = (float) config.getOutlineWidth();
+    private void renderOutline(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, Matrix4f matrix, RenderSettings outlineSettings, double thickness) {
+        float[] rgba = ColorUtils.toRgba(outlineSettings.getStart());
+        float red = rgba[0];
+        float green = rgba[1];
+        float blue = rgba[2];
+        float alpha = rgba[3];
+        float lineWidth = (float) thickness;
 
         // Get our own vertex consumer for lines
         VertexConsumer lineConsumer = bufferSource.getBuffer(RenderLayers.lines());
@@ -128,26 +116,12 @@ public class LevelRendererMixin {
     }
 
     @Unique
-    private void renderFill(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, Matrix4f matrix, BlockOverlayConfig config) {
-        float red, green, blue, alpha;
-
-        if (config.isFillChromaEnabled()) {
-            float speed = (float) config.getFillChromaSpeed();
-            float timeInSeconds = (System.currentTimeMillis() % 100000L) / 1000.0f;
-            float hue = (timeInSeconds * speed / 10.0f) % 1.0f;
-            Color color = Color.getHSBColor(hue, 1.0f, 1.0f);
-
-            red = color.getRed() / 255.0f;
-            green = color.getGreen() / 255.0f;
-            blue = color.getBlue() / 255.0f;
-        } else {
-            Color color = new Color(config.getFillColor(0), true);
-            red = color.getRed() / 255.0f;
-            green = color.getGreen() / 255.0f;
-            blue = color.getBlue() / 255.0f;
-        }
-
-        alpha = (float) config.getFillOpacity(0);
+    private void renderFill(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, Matrix4f matrix, RenderSettings fillSettings) {
+        float[] rgba = ColorUtils.toRgba(fillSettings.getStart());
+        float red = rgba[0];
+        float green = rgba[1];
+        float blue = rgba[2];
+        float alpha = rgba[3];
         float offset = 0.001f;
 
 //        VertexConsumer fillConsumer = bufferSource.getBuffer(RenderTypes.debugQuads());
