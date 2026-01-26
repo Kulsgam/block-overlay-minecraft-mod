@@ -1,12 +1,7 @@
 package com.kulsgam.utils;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.gui.DrawContext;
+import java.awt.*;
 
-import java.awt.Color;
-
-
-import net.minecraft.client.render.VertexConsumerProvider;
 
 public class ColorUtils {
     public static int setAlpha(int rgb, double alpha) {
@@ -16,14 +11,6 @@ public class ColorUtils {
     public static int getChroma(double step) {
         double time = System.currentTimeMillis() % (18000.0 / step) / (18000.0 / step);
         return Color.getHSBColor((float) time, 1.0f, 1.0f).getRGB();
-    }
-
-    public static float[] toRgba(int argb) {
-        float a = ((argb >> 24) & 0xFF) / 255.0f;
-        float r = ((argb >> 16) & 0xFF) / 255.0f;
-        float g = ((argb >>  8) & 0xFF) / 255.0f;
-        float b = ( argb        & 0xFF) / 255.0f;
-        return new float[]{r, g, b, a};
     }
 
     public static int interpolate(int first, int second, double percent) {

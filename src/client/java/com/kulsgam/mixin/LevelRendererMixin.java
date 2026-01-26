@@ -7,6 +7,7 @@ package com.kulsgam.mixin;
 import com.kulsgam.BlockOverlayClient;
 import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.config.RenderSettings;
+import com.kulsgam.utils.ShaderStatus;
 import com.kulsgam.utils.enums.RenderMode;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.*;
@@ -92,7 +93,9 @@ public class LevelRendererMixin {
 
         // Render outline - get our own line consumer since we cancelled vanilla setup
         if (outlineSettings.visible) {
-            renderOutline(bufferSource, shape, matrices, outlineSettings, config.thickness, side);
+            boolean isShaderEnabled = ShaderStatus.isIrisShadersEnabled();
+            double finalThickness = config.thickness * (isShaderEnabled ? config.shaderThicknessMultiplier : 1);
+            renderOutline(bufferSource, shape, matrices, outlineSettings, finalThickness, side);
         }
 
         bufferSource.draw();
