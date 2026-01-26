@@ -23,7 +23,6 @@
 		]
 	},
 	"mixins": [
-		"block-overlay.mixins.json",
 		{
 			"config": "block-overlay.client.mixins.json",
 			"environment": "client"
