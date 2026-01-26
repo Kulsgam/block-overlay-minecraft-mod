@@ -6,8 +6,6 @@ import com.kulsgam.listeners.BlockOverlayListener;
 import com.kulsgam.listeners.ShadersListener;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
@@ -25,7 +23,7 @@ public class BlockOverlayClient implements ClientModInitializer {
 
     public static BlockOverlayClient instance;
 
-    private final Logger logger = LoggerFactory.getLogger(NAME);
+    private final Logger logger = LoggerFactory.getLogger(MOD_ID);
     private MinecraftClient client;
     private BlockOverlayConfig config;
     private ShadersListener shadersListener;
@@ -40,15 +38,11 @@ public class BlockOverlayClient implements ClientModInitializer {
         shadersListener = new ShadersListener(client, logger);
         blockOverlayListener = new BlockOverlayListener(client, config, shadersListener, logger);
 
-        WorldRenderEvents.BEFORE_BLOCK_OUTLINE.register(blockOverlayListener::handleBlockOutline);
-        WorldRenderEvents.AFTER_ENTITIES.register(blockOverlayListener::renderWorld);
-        ClientTickEvents.END_CLIENT_TICK.register(blockOverlayListener::tick);
-
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-            dispatcher.register(literal("blockoverlay").executes(context -> {
-                openScreen(new BlockOverlayScreen(config, blockOverlayListener));
-                return 1;
-            }))
+                dispatcher.register(literal("blockoverlay").executes(context -> {
+                    openScreen(new BlockOverlayScreen(config, blockOverlayListener));
+                    return 1;
+                }))
         );
     }
 

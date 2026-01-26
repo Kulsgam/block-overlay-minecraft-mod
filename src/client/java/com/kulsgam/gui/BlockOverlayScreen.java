@@ -1,11 +1,5 @@
 package com.kulsgam.gui;
 
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-
 import com.kulsgam.BlockOverlayClient;
 import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.config.RenderSettings;
@@ -28,6 +22,12 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
 public class BlockOverlayScreen extends Screen {
     private static int propertyRenderIndex;
@@ -57,7 +57,7 @@ public class BlockOverlayScreen extends Screen {
         super(Text.literal("Block Overlay"));
         this.config = config;
         this.blockOverlayListener = blockOverlayListener;
-        this.property = propertyRenderIndex == 1 ? config.overlayRender : config.outlineRender;
+        this.property = propertyRenderIndex == 1 ? config.fillRender : config.outlineRender;
         animator.reset();
     }
 
@@ -69,7 +69,7 @@ public class BlockOverlayScreen extends Screen {
 
         int x = 10;
         colorSlider = new ColorSlider(x, height / 2 + 2, 100, 20, "Hue", 0.0, 360.0, property.getHue(getColorIndex()),
-            value -> updateColorSlider());
+                value -> updateColorSlider());
         leftComponents.add(colorSlider);
 
         colorPicker = new ColorPicker(x, height / 2 - 107, 100, 100, colorSlider.getColor(), value -> updateColorPicker());
@@ -77,53 +77,53 @@ public class BlockOverlayScreen extends Screen {
         leftComponents.add(colorPicker);
 
         opacitySlider = new OpacitySlider(x, height / 2 + 30, 100, 20, "Opacity", 0.07, 1.0, property.getOpacity(getColorIndex()),
-            value -> updateOpacitySlider());
+                value -> updateOpacitySlider());
         opacitySlider.setColor(colorPicker.getColor());
         leftComponents.add(opacitySlider);
 
         fadeSpeedSlider = new BaseSlider(x, height / 2 - 164, 100, 20, "Speed", 1.0, 10.0, property.fadeSpeed,
-            value -> updateFadeSpeedSlider());
+                value -> updateFadeSpeedSlider());
         leftComponents.add(fadeSpeedSlider);
 
         chromaSpeedSlider = new BaseSlider(x, height / 2 + 2, 100, 20, "Speed", 1.0, 10.0, property.chromaSpeed,
-            value -> updateChromaSpeedSlider());
+                value -> updateChromaSpeedSlider());
         leftComponents.add(chromaSpeedSlider);
 
         gradientColorButton = new MenuButton(x, height / 2 - 136, 100, 20,
-            "Gradient: Color ", gradientColorIndex, new String[]{"1", "2"},
-            index -> {
-                gradientColorIndex = index;
-                updateComponents();
-            });
+                "Gradient: Color ", gradientColorIndex, new String[]{"1", "2"},
+                index -> {
+                    gradientColorIndex = index;
+                    updateComponents();
+                });
         leftComponents.add(gradientColorButton);
 
         fadeColorButton = new MenuButton(x, height / 2 - 136, 100, 20,
-            "Fade: Color ", fadeColorIndex, new String[]{"1", "2"},
-            index -> {
-                fadeColorIndex = index;
-                updateComponents();
-            });
+                "Fade: Color ", fadeColorIndex, new String[]{"1", "2"},
+                index -> {
+                    fadeColorIndex = index;
+                    updateComponents();
+                });
         leftComponents.add(fadeColorButton);
 
         colorModeButton = new MenuButton(x, height / 2 + 58, 100, 20, "Color: ",
-            EnumUtils.getOrdinal(ColorMode.class, property.colorMode.name()),
-            Arrays.stream(EnumUtils.getNames(ColorMode.class)).map(this::formatName).toArray(String[]::new),
-            index -> {
-                property.colorMode = ColorMode.values()[index];
-                updateComponents();
-            });
+                EnumUtils.getOrdinal(ColorMode.class, property.colorMode.name()),
+                Arrays.stream(EnumUtils.getNames(ColorMode.class)).map(this::formatName).toArray(String[]::new),
+                index -> {
+                    property.colorMode = ColorMode.values()[index];
+                    updateComponents();
+                });
         leftComponents.add(colorModeButton);
 
         propertyButton = new MenuButton(x, height / 2 + 86, 100, 20, "Editing: ", propertyRenderIndex,
-            new String[]{config.outlineRender.name, config.overlayRender.name},
-            index -> {
-                propertyRenderIndex = index;
-                property = propertyRenderIndex == 1 ? config.overlayRender : config.outlineRender;
-                fadeSpeedSlider.setValue(property.fadeSpeed);
-                chromaSpeedSlider.setValue(property.chromaSpeed);
-                colorModeButton.setIndex(EnumUtils.getOrdinal(ColorMode.class, property.colorMode.name()));
-                updateComponents();
-            });
+                new String[]{config.outlineRender.name, config.fillRender.name},
+                index -> {
+                    propertyRenderIndex = index;
+                    property = propertyRenderIndex == 1 ? config.fillRender : config.outlineRender;
+                    fadeSpeedSlider.setValue(property.fadeSpeed);
+                    chromaSpeedSlider.setValue(property.chromaSpeed);
+                    colorModeButton.setIndex(EnumUtils.getOrdinal(ColorMode.class, property.colorMode.name()));
+                    updateComponents();
+                });
         leftComponents.add(propertyButton);
 
         x = width - 110;
@@ -134,15 +134,15 @@ public class BlockOverlayScreen extends Screen {
         rightComponents.add(renderModeButton);
 
         thicknessSlider = new BaseSlider(x, height / 2 - 68, 100, 20, "Outline Thickness", 1.0, 10.0,
-            config.thickness, value -> updateThicknessSlider());
+                config.thickness, value -> updateThicknessSlider());
         rightComponents.add(thicknessSlider);
 
         ToggleButton outlineToggleButton = new ToggleButton(x, height / 2 - 40, 100, 20, config.outlineRender.visible,
                 config.outlineRender.name, value -> config.outlineRender.visible = value, "Show", "the outline");
         rightComponents.add(outlineToggleButton);
 
-        ToggleButton overlayToggleButton = new ToggleButton(x, height / 2 - 16, 100, 20, config.overlayRender.visible,
-                config.overlayRender.name, value -> config.overlayRender.visible = value, "Show", "the overlay");
+        ToggleButton overlayToggleButton = new ToggleButton(x, height / 2 - 16, 100, 20, config.fillRender.visible,
+                config.fillRender.name, value -> config.fillRender.visible = value, "Show", "the overlay");
         rightComponents.add(overlayToggleButton);
 
         ToggleButton persistenceToggleButton = new ToggleButton(x, height / 2 + 8, 100, 20, config.persistence,
@@ -176,9 +176,9 @@ public class BlockOverlayScreen extends Screen {
         GuiUtils.drawRect(context, 0.0, 0.0, panelWidth, height, 0xBF000000);
         if (property.colorMode == ColorMode.CHROMA) {
             GuiUtils.drawRect(context, colorPicker.getX(), colorPicker.getY(),
-                colorPicker.getX() + colorPicker.getWidth(),
-                colorPicker.getY() + colorPicker.getHeight(),
-                ColorUtils.getChroma(property.chromaSpeed));
+                    colorPicker.getX() + colorPicker.getWidth(),
+                    colorPicker.getY() + colorPicker.getHeight(),
+                    ColorUtils.getChroma(property.chromaSpeed));
             opacitySlider.setColor(ColorUtils.getChroma(property.chromaSpeed));
         }
         leftComponents.forEach(component -> component.render(context, mouseX, mouseY, delta));
@@ -190,7 +190,7 @@ public class BlockOverlayScreen extends Screen {
         context.getMatrices().scale(1.5f, 1.5f);
         double alpha = animator.getValue(0.1, 1.0, !closing, true);
         context.drawCenteredTextWithShadow(textRenderer, Text.literal("Block Overlay"), (int) ((width / 2.0) / 1.5),
-            (int) ((height / 15.0) / 1.5), ColorUtils.setAlpha(Color.WHITE.getRGB(), alpha));
+                (int) ((height / 15.0) / 1.5), ColorUtils.setAlpha(Color.WHITE.getRGB(), alpha));
         context.getMatrices().popMatrix();
 
         if (closing && panelX == panelWidth) {

@@ -6,7 +6,6 @@ import com.kulsgam.gui.BlockOverlayScreen;
 import com.kulsgam.utils.Animator;
 import com.kulsgam.utils.RenderUtils;
 import com.kulsgam.utils.enums.RenderMode;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -15,6 +14,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.Perspective;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.block.BlockRenderManager;
+import net.minecraft.client.render.state.OutlineRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -23,15 +23,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.*;
 import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.client.render.state.OutlineRenderState;
-//import com.mojang.blaze3d.opengl.GlStateManager;
-import org.lwjgl.opengl.GL14;
 import org.slf4j.Logger;
 
 import java.util.Set;
@@ -43,26 +36,26 @@ public class BlockOverlayListener {
     private final Logger logger;
     private final Animator blockAnimator = new Animator(350.0);
     private final Set<Block> plantBlocks = Set.of(
-        Blocks.SHORT_GRASS,
-        Blocks.TALL_GRASS,
-        Blocks.FERN,
-        Blocks.LARGE_FERN,
-        Blocks.DANDELION,
-        Blocks.POPPY,
-        Blocks.BLUE_ORCHID,
-        Blocks.ALLIUM,
-        Blocks.AZURE_BLUET,
-        Blocks.RED_TULIP,
-        Blocks.ORANGE_TULIP,
-        Blocks.WHITE_TULIP,
-        Blocks.PINK_TULIP,
-        Blocks.OXEYE_DAISY,
-        Blocks.CORNFLOWER,
-        Blocks.LILY_OF_THE_VALLEY,
-        Blocks.SUNFLOWER,
-        Blocks.LILAC,
-        Blocks.ROSE_BUSH,
-        Blocks.PEONY
+            Blocks.SHORT_GRASS,
+            Blocks.TALL_GRASS,
+            Blocks.FERN,
+            Blocks.LARGE_FERN,
+            Blocks.DANDELION,
+            Blocks.POPPY,
+            Blocks.BLUE_ORCHID,
+            Blocks.ALLIUM,
+            Blocks.AZURE_BLUET,
+            Blocks.RED_TULIP,
+            Blocks.ORANGE_TULIP,
+            Blocks.WHITE_TULIP,
+            Blocks.PINK_TULIP,
+            Blocks.OXEYE_DAISY,
+            Blocks.CORNFLOWER,
+            Blocks.LILY_OF_THE_VALLEY,
+            Blocks.SUNFLOWER,
+            Blocks.LILAC,
+            Blocks.ROSE_BUSH,
+            Blocks.PEONY
     );
     private boolean blockShrinking;
 
@@ -109,7 +102,7 @@ public class BlockOverlayListener {
     }
 
     private void renderBlockOverlay(WorldRenderContext context, BlockState blockState, Entity entity, float tickDelta) {
-        RenderSettings overlaySettings = config.overlayRender;
+        RenderSettings overlaySettings = config.fillRender;
         RenderSettings outlineSettings = config.outlineRender;
 
         int overlayStartColor = overlaySettings.getStart();
