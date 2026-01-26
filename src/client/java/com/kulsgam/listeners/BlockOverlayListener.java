@@ -4,6 +4,7 @@ import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.config.RenderSettings;
 import com.kulsgam.gui.BlockOverlayScreen;
 import com.kulsgam.utils.Animator;
+import com.kulsgam.utils.ColorUtils;
 import com.kulsgam.utils.RenderUtils;
 import com.kulsgam.utils.enums.RenderMode;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
@@ -22,6 +23,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.*;
 import net.minecraft.util.shape.VoxelShape;
+import org.joml.Matrix4f;
 import org.slf4j.Logger;
 
 import java.util.Set;
@@ -98,12 +100,10 @@ public class BlockOverlayListener {
 
         int overlayStartColor = overlaySettings.getStart();
         int overlayEndColor = overlaySettings.getEnd();
-        int outlineStartColor = outlineSettings.getStart();
-        int outlineEndColor = outlineSettings.getEnd();
-
         boolean overlay = overlaySettings.visible;
         boolean outline = outlineSettings.visible;
-        int outlineColor = outlineSettings.getStart();
+        int outlineStartColor = outlineSettings.getStart();
+        int outlineEndColor = outlineSettings.getEnd();
 
         HitResult hitResult = client.crosshairTarget;
         if (!(hitResult instanceof BlockHitResult blockHit)) return;
@@ -141,17 +141,8 @@ public class BlockOverlayListener {
             // ---- OUTLINE ----
             if (outline) {
                 VertexConsumer lineConsumer = consumers.getBuffer(RenderLayers.lines());
-
-                // Outline the whole voxel shape, offset to the block position in world space.
-                // No need to translate matrices for blockPos; we pass offsets directly.
-                VertexRendering.drawOutline(
-                        matrices,
-                        lineConsumer,
-                        shape,
-                        blockPos.getX(), blockPos.getY(), blockPos.getZ(),
-                        outlineColor,
-                        (float) config.thickness
-                );
+                Box outlineBox = worldBox.expand(0.001);
+                drawOutline(matrices, lineConsumer, outlineBox, side, outlineStartColor, outlineEndColor, (float) config.thickness);
             }
         }
 
@@ -222,5 +213,150 @@ public class BlockOverlayListener {
     public void resetAnimation(boolean blockShrinking) {
         this.blockShrinking = blockShrinking;
         blockAnimator.reset();
+    }
+
+    private void drawOutline(MatrixStack matrices, VertexConsumer lineConsumer, Box box, Direction side,
+                             int startColor, int endColor, float lineWidth) {
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
+        double minY = box.minY;
+        double maxY = box.maxY;
+        int passes = Math.max(1, (int) lineWidth);
+        float offsetIncrement = 0.001f;
+
+        for (int pass = 0; pass < passes; pass++) {
+            float offset = pass * offsetIncrement;
+            if (side == null) {
+                drawBoxEdges(lineConsumer, matrix, box, startColor, endColor, minY, maxY, lineWidth, offset);
+            } else {
+                drawFaceEdges(lineConsumer, matrix, box, side, startColor, endColor, minY, maxY, lineWidth, offset);
+            }
+        }
+    }
+
+    private void drawBoxEdges(VertexConsumer lineConsumer, Matrix4f matrix, Box box, int startColor, int endColor,
+                              double minY, double maxY, float lineWidth, float offset) {
+        float minX = (float) box.minX + offset;
+        float minYBox = (float) box.minY + offset;
+        float minZ = (float) box.minZ + offset;
+        float maxX = (float) box.maxX + offset;
+        float maxYBox = (float) box.maxY + offset;
+        float maxZ = (float) box.maxZ + offset;
+
+        // bottom
+        emitLine(lineConsumer, matrix, minX, minYBox, minZ, colorForY(startColor, endColor, minYBox, minY, maxY),
+                maxX, minYBox, minZ, colorForY(startColor, endColor, minYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, maxX, minYBox, minZ, colorForY(startColor, endColor, minYBox, minY, maxY),
+                maxX, minYBox, maxZ, colorForY(startColor, endColor, minYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, maxX, minYBox, maxZ, colorForY(startColor, endColor, minYBox, minY, maxY),
+                minX, minYBox, maxZ, colorForY(startColor, endColor, minYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, minX, minYBox, maxZ, colorForY(startColor, endColor, minYBox, minY, maxY),
+                minX, minYBox, minZ, colorForY(startColor, endColor, minYBox, minY, maxY), lineWidth);
+
+        // top
+        emitLine(lineConsumer, matrix, minX, maxYBox, minZ, colorForY(startColor, endColor, maxYBox, minY, maxY),
+                maxX, maxYBox, minZ, colorForY(startColor, endColor, maxYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, maxX, maxYBox, minZ, colorForY(startColor, endColor, maxYBox, minY, maxY),
+                maxX, maxYBox, maxZ, colorForY(startColor, endColor, maxYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, maxX, maxYBox, maxZ, colorForY(startColor, endColor, maxYBox, minY, maxY),
+                minX, maxYBox, maxZ, colorForY(startColor, endColor, maxYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, minX, maxYBox, maxZ, colorForY(startColor, endColor, maxYBox, minY, maxY),
+                minX, maxYBox, minZ, colorForY(startColor, endColor, maxYBox, minY, maxY), lineWidth);
+
+        // vertical
+        emitLine(lineConsumer, matrix, minX, minYBox, minZ, colorForY(startColor, endColor, minYBox, minY, maxY),
+                minX, maxYBox, minZ, colorForY(startColor, endColor, maxYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, maxX, minYBox, minZ, colorForY(startColor, endColor, minYBox, minY, maxY),
+                maxX, maxYBox, minZ, colorForY(startColor, endColor, maxYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, maxX, minYBox, maxZ, colorForY(startColor, endColor, minYBox, minY, maxY),
+                maxX, maxYBox, maxZ, colorForY(startColor, endColor, maxYBox, minY, maxY), lineWidth);
+        emitLine(lineConsumer, matrix, minX, minYBox, maxZ, colorForY(startColor, endColor, minYBox, minY, maxY),
+                minX, maxYBox, maxZ, colorForY(startColor, endColor, maxYBox, minY, maxY), lineWidth);
+    }
+
+    private void drawFaceEdges(VertexConsumer lineConsumer, Matrix4f matrix, Box box, Direction side,
+                               int startColor, int endColor, double minY, double maxY, float lineWidth, float offset) {
+        float minX = (float) box.minX + offset;
+        float minYBox = (float) box.minY + offset;
+        float minZ = (float) box.minZ + offset;
+        float maxX = (float) box.maxX + offset;
+        float maxYBox = (float) box.maxY + offset;
+        float maxZ = (float) box.maxZ + offset;
+
+        float[][] corners = switch (side) {
+            case UP -> new float[][]{
+                    {minX, maxYBox, minZ}, {maxX, maxYBox, minZ}, {maxX, maxYBox, maxZ}, {minX, maxYBox, maxZ}
+            };
+            case DOWN -> new float[][]{
+                    {minX, minYBox, minZ}, {maxX, minYBox, minZ}, {maxX, minYBox, maxZ}, {minX, minYBox, maxZ}
+            };
+            case NORTH -> new float[][]{
+                    {minX, minYBox, minZ}, {maxX, minYBox, minZ}, {maxX, maxYBox, minZ}, {minX, maxYBox, minZ}
+            };
+            case SOUTH -> new float[][]{
+                    {maxX, minYBox, maxZ}, {minX, minYBox, maxZ}, {minX, maxYBox, maxZ}, {maxX, maxYBox, maxZ}
+            };
+            case WEST -> new float[][]{
+                    {minX, minYBox, maxZ}, {minX, minYBox, minZ}, {minX, maxYBox, minZ}, {minX, maxYBox, maxZ}
+            };
+            case EAST -> new float[][]{
+                    {maxX, minYBox, minZ}, {maxX, minYBox, maxZ}, {maxX, maxYBox, maxZ}, {maxX, maxYBox, minZ}
+            };
+        };
+
+        for (int i = 0; i < corners.length; i++) {
+            float[] start = corners[i];
+            float[] end = corners[(i + 1) % corners.length];
+            int startEdgeColor = colorForY(startColor, endColor, start[1], minY, maxY);
+            int endEdgeColor = colorForY(startColor, endColor, end[1], minY, maxY);
+            emitLine(lineConsumer, matrix, start[0], start[1], start[2], startEdgeColor,
+                    end[0], end[1], end[2], endEdgeColor, lineWidth);
+        }
+    }
+
+    private void emitLine(VertexConsumer lineConsumer, Matrix4f matrix,
+                          float x1, float y1, float z1, int c1,
+                          float x2, float y2, float z2, int c2,
+                          float lineWidth) {
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        float dz = z2 - z1;
+        float length = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float normalX = length > 1e-6f ? dx / length : 1.0f;
+        float normalY = length > 1e-6f ? dy / length : 0.0f;
+        float normalZ = length > 1e-6f ? dz / length : 0.0f;
+
+        float[] rgba1 = ColorUtils.toRgba(c1);
+        float[] rgba2 = ColorUtils.toRgba(c2);
+
+        lineConsumer.vertex(matrix, x1, y1, z1)
+                .color(rgba1[0], rgba1[1], rgba1[2], rgba1[3])
+                .normal(normalX, normalY, normalZ)
+                .lineWidth(lineWidth);
+        lineConsumer.vertex(matrix, x2, y2, z2)
+                .color(rgba2[0], rgba2[1], rgba2[2], rgba2[3])
+                .normal(normalX, normalY, normalZ)
+                .lineWidth(lineWidth);
+    }
+
+    private int colorForY(int startColor, int endColor, double y, double minY, double maxY) {
+        double range = Math.max(1e-6, maxY - minY);
+        float t = (float) ((y - minY) / range);
+        return lerpColor(startColor, endColor, t);
+    }
+
+    private int lerpColor(int c0, int c1, float t) {
+        int a0 = (c0 >>> 24) & 0xFF;
+        int r0 = (c0 >>> 16) & 0xFF;
+        int g0 = (c0 >>> 8) & 0xFF;
+        int b0 = c0 & 0xFF;
+        int a1 = (c1 >>> 24) & 0xFF;
+        int r1 = (c1 >>> 16) & 0xFF;
+        int g1 = (c1 >>> 8) & 0xFF;
+        int b1 = c1 & 0xFF;
+        int a = (int) (a0 + (a1 - a0) * t);
+        int r = (int) (r0 + (r1 - r0) * t);
+        int g = (int) (g0 + (g1 - g0) * t);
+        int b = (int) (b0 + (b1 - b0) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 }
