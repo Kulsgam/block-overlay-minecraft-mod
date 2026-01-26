@@ -2,6 +2,7 @@ package com.kulsgam.mixin;
 
 import com.kulsgam.BlockOverlayClient;
 import com.kulsgam.config.BlockOverlayConfig;
+import com.kulsgam.utils.enums.RenderMode;
 import net.minecraft.client.render.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,8 +18,14 @@ public class GameRendererMixin {
             return;
         }
         BlockOverlayConfig config = client.getConfig();
-        if (config != null && config.persistence) {
-            cir.setReturnValue(true);
+        if (config != null) {
+            if (config.renderMode == RenderMode.HIDDEN) {
+                cir.setReturnValue(false);
+                return;
+            }
+            if (config.persistence) {
+                cir.setReturnValue(true);
+            }
         }
     }
 }
