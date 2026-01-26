@@ -1,5 +1,5 @@
 # Block Overlay Minecraft Mod (1.21.11) - Fabric
-Customizable block overlay rendering compatible with shaders
+Customizable block overlay rendering compatible with shaders, spectator mode, and adventure mode
 
 ## Features
 TODO
