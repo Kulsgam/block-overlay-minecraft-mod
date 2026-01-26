@@ -2,7 +2,6 @@ package com.kulsgam;
 
 import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.gui.BlockOverlayScreen;
-import com.kulsgam.listeners.BlockOverlayListener;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
@@ -25,7 +24,6 @@ public class BlockOverlayClient implements ClientModInitializer {
     private final Logger logger = LoggerFactory.getLogger(MOD_ID);
     private MinecraftClient client;
     private BlockOverlayConfig config;
-    private BlockOverlayListener blockOverlayListener;
 
     @Override
     public void onInitializeClient() {
@@ -33,11 +31,10 @@ public class BlockOverlayClient implements ClientModInitializer {
         client = MinecraftClient.getInstance();
         Path configPath = FabricLoader.getInstance().getConfigDir().resolve("blockoverlay.json");
         config = BlockOverlayConfig.load(configPath, logger);
-        blockOverlayListener = new BlockOverlayListener(client, config, logger);
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
                 dispatcher.register(literal("blockoverlay").executes(context -> {
-                    openScreen(new BlockOverlayScreen(config, blockOverlayListener));
+                    openScreen(new BlockOverlayScreen(config));
                     return 1;
                 }))
         );
@@ -57,9 +54,5 @@ public class BlockOverlayClient implements ClientModInitializer {
 
     public BlockOverlayConfig getConfig() {
         return config;
-    }
-
-    public BlockOverlayListener getBlockOverlayListener() {
-        return blockOverlayListener;
     }
 }

@@ -9,7 +9,6 @@ import com.kulsgam.gui.components.buttons.ToggleButton;
 import com.kulsgam.gui.components.sliders.BaseSlider;
 import com.kulsgam.gui.components.sliders.ColorSlider;
 import com.kulsgam.gui.components.sliders.OpacitySlider;
-import com.kulsgam.listeners.BlockOverlayListener;
 import com.kulsgam.utils.Animator;
 import com.kulsgam.utils.ColorUtils;
 import com.kulsgam.utils.EnumUtils;
@@ -35,7 +34,6 @@ public class BlockOverlayScreen extends Screen {
     private static int fadeColorIndex;
 
     private final BlockOverlayConfig config;
-    private final BlockOverlayListener blockOverlayListener;
     private final Animator animator = new Animator(350.0);
     private final List<ClickableWidget> leftComponents = new ArrayList<>();
     private final List<ClickableWidget> rightComponents = new ArrayList<>();
@@ -53,10 +51,9 @@ public class BlockOverlayScreen extends Screen {
     private BaseSlider thicknessSlider;
     private boolean closing;
 
-    public BlockOverlayScreen(BlockOverlayConfig config, BlockOverlayListener blockOverlayListener) {
+    public BlockOverlayScreen(BlockOverlayConfig config) {
         super(Text.literal("Block Overlay"));
         this.config = config;
-        this.blockOverlayListener = blockOverlayListener;
         this.property = propertyRenderIndex == 1 ? config.fillRender : config.outlineRender;
         animator.reset();
     }
@@ -195,7 +192,6 @@ public class BlockOverlayScreen extends Screen {
 
         if (closing && panelX == panelWidth) {
             MinecraftClient.getInstance().setScreen(null);
-            blockOverlayListener.resetAnimation(true);
         }
     }
 
@@ -204,7 +200,6 @@ public class BlockOverlayScreen extends Screen {
         if (keyInput.getKeycode() == 256 && !closing) {
             closing = true;
             animator.reset();
-            blockOverlayListener.resetAnimation(true);
             return true;
         }
         return super.keyPressed(keyInput);

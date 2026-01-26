@@ -7,18 +7,16 @@ package com.kulsgam.mixin;
 import com.kulsgam.BlockOverlayClient;
 import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.config.RenderSettings;
-import com.kulsgam.utils.ColorUtils;
-import com.kulsgam.utils.RenderUtils;
 import com.kulsgam.utils.enums.RenderMode;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.state.OutlineRenderState;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.shape.VoxelShape;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,6 +27,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(WorldRenderer.class)
 public class LevelRendererMixin {
+    @Unique
+    private static float offset = 0.001f;
+    @Unique
+    private static float offsetIncrement = 0.001f;
+
     @Inject(method = "drawBlockOutline", at = @At("HEAD"), cancellable = true)
     private void onRenderOverlay(
             MatrixStack matrices,
@@ -45,7 +48,7 @@ public class LevelRendererMixin {
         VoxelShape shape = blockOutlineRenderState.shape();
 
         if (shape.isEmpty()) {
-            BlockOverlayClient.instance.getLogger().debug("Shape is empty");
+            BlockOverlayClient.instance.getLogger().info("Shape is empty");
             return;
         }
 
@@ -92,6 +95,7 @@ public class LevelRendererMixin {
             renderOutline(bufferSource, shape, matrices, outlineSettings, config.thickness, side);
         }
 
+        bufferSource.draw();
         matrices.pop();
     }
 
@@ -109,7 +113,6 @@ public class LevelRendererMixin {
         VertexConsumer lineConsumer = bufferSource.getBuffer(RenderLayers.lines());
 
         int passes = Math.max(1, (int) lineWidth);
-        float offsetIncrement = 0.001f;
 
         for (int pass = 0; pass < passes; pass++) {
             float offset = pass * offsetIncrement;
@@ -128,7 +131,7 @@ public class LevelRendererMixin {
                 });
             } else {
                 shape.forEachBox((boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ) -> {
-                    Box box = new Box(boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ);
+                    Box box = new Box(boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ).expand(LevelRendererMixin.offset);
                     drawFaceOutline(lineConsumer, matrix, box, side, startColor, endColor, minY, maxY, lineWidth, offset);
                 });
             }
@@ -136,18 +139,60 @@ public class LevelRendererMixin {
     }
 
     @Unique
-    private void renderFill(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, MatrixStack matrices,
-                            RenderSettings fillSettings, Direction side) {
-        int startColor = fillSettings.getStart();
-        int endColor = fillSettings.getEnd();
+    private void renderFill(
+            VertexConsumerProvider.Immediate bufferSource,
+            VoxelShape shape,
+            MatrixStack matrices,
+            RenderSettings fillSettings,
+            Direction selectedFace
+    ) {
+        int fillColor = fillSettings.getStart();
 
-        RenderLayer tmp = RenderLayer.of("lightning", RenderSetup.builder(RenderPipelines.RENDERTYPE_LIGHTNING).outputTarget(OutputTarget.MAIN_TARGET).translucent().build());
-        VertexConsumer fillConsumer = bufferSource.getBuffer(tmp);
+        RenderLayer fillLayer = RenderLayer.of(
+                "block_overlay_fill",
+                RenderSetup.builder(RenderPipelines.RENDERTYPE_LIGHTNING)
+                        .outputTarget(OutputTarget.MAIN_TARGET)
+                        .translucent()
+                        .build()
+        );
+        VertexConsumer fillConsumer = bufferSource.getBuffer(fillLayer);
+        Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
+
         shape.forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> {
-            Box box = new Box(minX, minY, minZ, maxX, maxY, maxZ).expand(0.001);
-            RenderUtils.emitBoxQuads(matrices, fillConsumer, box, side, startColor, endColor);
+            Box expandedBox = new Box(minX, minY, minZ, maxX, maxY, maxZ)
+                    .expand(offset);
+
+            if (selectedFace != null) {
+                float[][] faceVertices = getFaceVertices(selectedFace, expandedBox);
+                emitQuad(fillConsumer, positionMatrix,
+                        faceVertices[0], faceVertices[1],
+                        faceVertices[2], faceVertices[3],
+                        fillColor);
+            } else {
+                for (Direction face : Direction.values()) {
+                    float[][] faceVertices = getFaceVertices(face, expandedBox);
+                    emitQuad(fillConsumer, positionMatrix,
+                            faceVertices[0], faceVertices[1],
+                            faceVertices[2], faceVertices[3],
+                            fillColor);
+                }
+            }
         });
     }
+
+    @Unique
+    private void emitQuad(
+            VertexConsumer consumer,
+            Matrix4f positionMatrix,
+            float[] v0, float[] v1, float[] v2, float[] v3,
+            int argbColor
+    ) {
+        consumer.vertex(positionMatrix, v0[0], v0[1], v0[2]).color(argbColor);
+        consumer.vertex(positionMatrix, v1[0], v1[1], v1[2]).color(argbColor);
+        consumer.vertex(positionMatrix, v2[0], v2[1], v2[2]).color(argbColor);
+        consumer.vertex(positionMatrix, v3[0], v3[1], v3[2]).color(argbColor);
+    }
+
 
     @Unique
     private void emitLine(VertexConsumer lineConsumer, Matrix4f matrix,
@@ -162,50 +207,21 @@ public class LevelRendererMixin {
         float normalY = length > 1e-6f ? dy / length : 0.0f;
         float normalZ = length > 1e-6f ? dz / length : 0.0f;
 
-        float[] rgba1 = ColorUtils.toRgba(c1);
-        float[] rgba2 = ColorUtils.toRgba(c2);
-
         lineConsumer.vertex(matrix, x1, y1, z1)
-                .color(rgba1[0], rgba1[1], rgba1[2], rgba1[3])
+                .color(c1)
                 .normal(normalX, normalY, normalZ)
                 .lineWidth(lineWidth);
         lineConsumer.vertex(matrix, x2, y2, z2)
-                .color(rgba2[0], rgba2[1], rgba2[2], rgba2[3])
+                .color(c2)
                 .normal(normalX, normalY, normalZ)
                 .lineWidth(lineWidth);
     }
 
     @Unique
-    private void drawFaceOutline(VertexConsumer lineConsumer, Matrix4f matrix, Box box, Direction side,
+    private void drawFaceOutline(VertexConsumer lineConsumer, Matrix4f matrix, Box expandedBox, Direction side,
                                  int startColor, int endColor, double minY, double maxY,
                                  float lineWidth, float offset) {
-        float minX = (float) box.minX + offset;
-        float minYBox = (float) box.minY + offset;
-        float minZ = (float) box.minZ + offset;
-        float maxX = (float) box.maxX + offset;
-        float maxYBox = (float) box.maxY + offset;
-        float maxZ = (float) box.maxZ + offset;
-
-        float[][] corners = switch (side) {
-            case UP -> new float[][]{
-                    {minX, maxYBox, minZ}, {maxX, maxYBox, minZ}, {maxX, maxYBox, maxZ}, {minX, maxYBox, maxZ}
-            };
-            case DOWN -> new float[][]{
-                    {minX, minYBox, minZ}, {maxX, minYBox, minZ}, {maxX, minYBox, maxZ}, {minX, minYBox, maxZ}
-            };
-            case NORTH -> new float[][]{
-                    {minX, minYBox, minZ}, {maxX, minYBox, minZ}, {maxX, maxYBox, minZ}, {minX, maxYBox, minZ}
-            };
-            case SOUTH -> new float[][]{
-                    {maxX, minYBox, maxZ}, {minX, minYBox, maxZ}, {minX, maxYBox, maxZ}, {maxX, maxYBox, maxZ}
-            };
-            case WEST -> new float[][]{
-                    {minX, minYBox, maxZ}, {minX, minYBox, minZ}, {minX, maxYBox, minZ}, {minX, maxYBox, maxZ}
-            };
-            case EAST -> new float[][]{
-                    {maxX, minYBox, minZ}, {maxX, minYBox, maxZ}, {maxX, maxYBox, maxZ}, {maxX, maxYBox, minZ}
-            };
-        };
+        float[][] corners = getFaceVertices(side, expandedBox);
 
         for (int i = 0; i < corners.length; i++) {
             float[] start = corners[i];
@@ -215,6 +231,66 @@ public class LevelRendererMixin {
             emitLine(lineConsumer, matrix, start[0], start[1], start[2], startColorEdge,
                     end[0], end[1], end[2], endColorEdge, lineWidth);
         }
+    }
+
+    @Unique
+    private float[][] getFaceVertices(Direction face, Box box) {
+        float minX = (float) box.minX;
+        float minY = (float) box.minY;
+        float minZ = (float) box.minZ;
+        float maxX = (float) box.maxX;
+        float maxY = (float) box.maxY;
+        float maxZ = (float) box.maxZ;
+
+        return switch (face) {
+            // +Y outward
+            case UP -> new float[][]{
+                    {minX, maxY, minZ},
+                    {minX, maxY, maxZ},
+                    {maxX, maxY, maxZ},
+                    {maxX, maxY, minZ}
+            };
+
+            // -Y outward
+            case DOWN -> new float[][]{
+                    {minX, minY, minZ},
+                    {maxX, minY, minZ},
+                    {maxX, minY, maxZ},
+                    {minX, minY, maxZ}
+            };
+
+            // -Z outward
+            case NORTH -> new float[][]{
+                    {minX, minY, minZ},
+                    {minX, maxY, minZ},
+                    {maxX, maxY, minZ},
+                    {maxX, minY, minZ}
+            };
+
+            // +Z outward
+            case SOUTH -> new float[][]{
+                    {minX, minY, maxZ},
+                    {maxX, minY, maxZ},
+                    {maxX, maxY, maxZ},
+                    {minX, maxY, maxZ}
+            };
+
+            // -X outward
+            case WEST -> new float[][]{
+                    {minX, minY, minZ},
+                    {minX, minY, maxZ},
+                    {minX, maxY, maxZ},
+                    {minX, maxY, minZ}
+            };
+
+            // +X outward
+            case EAST -> new float[][]{
+                    {maxX, minY, minZ},
+                    {maxX, maxY, minZ},
+                    {maxX, maxY, maxZ},
+                    {maxX, minY, maxZ}
+            };
+        };
     }
 
     @Unique
