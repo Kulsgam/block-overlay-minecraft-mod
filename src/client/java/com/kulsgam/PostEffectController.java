@@ -14,7 +14,7 @@ public final class PostEffectController {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.gameRenderer == null) return;
 
-        ((GameRendererInvoker) client.gameRenderer).setPostProcessor(BLOCK_OVERLAY_EFFECT);
+        ((GameRendererInvoker) client.gameRenderer).callSetPostProcessor(BLOCK_OVERLAY_EFFECT);
         // GameRenderer internally tracks enabled state; if you need hard-enable,
         // you can add an @Accessor for postProcessorEnabled and set it true.
     }

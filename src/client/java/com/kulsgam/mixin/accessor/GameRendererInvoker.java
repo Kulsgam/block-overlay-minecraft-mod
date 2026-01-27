@@ -8,5 +8,5 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(GameRenderer.class)
 public interface GameRendererInvoker {
     @Invoker("setPostProcessor")
-    void setPostProcessor(Identifier id);
+    void callSetPostProcessor(Identifier id);
 }
