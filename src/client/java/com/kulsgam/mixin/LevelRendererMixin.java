@@ -120,9 +120,9 @@ public class LevelRendererMixin {
 
         int passes = Math.max(1, (int) lineWidth);
 
-        for (int pass = 0; pass < passes; pass++) {
-            float offset = pass * offsetIncrement;
-            if (side == null) {
+        if (side == null) {
+            for (int pass = 0; pass < passes; pass++) {
+                float offset = pass * offsetIncrement;
                 shape.forEachBox((boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ) -> {
                     Box box = new Box(boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ)
                             .expand(LevelRendererMixin.offset + offset);
@@ -141,7 +141,11 @@ public class LevelRendererMixin {
                         );
                     }
                 });
-            } else {
+            }
+        } else {
+            for (int pass = 0; pass < passes; pass++) {
+                float offset = pass * offsetIncrement;
+
                 shape.forEachBox((boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ) -> {
                     Box box = new Box(boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ).expand(LevelRendererMixin.offset + offset);
                     drawFaceOutline(lineConsumer, matrix, box, side, startColor, endColor, minY, maxY, lineWidth);
