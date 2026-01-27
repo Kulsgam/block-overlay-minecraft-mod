@@ -123,22 +123,28 @@ public class LevelRendererMixin {
         for (int pass = 0; pass < passes; pass++) {
             float offset = pass * offsetIncrement;
             if (side == null) {
-                shape.forEachEdge((edgeMinX, edgeMinY, edgeMinZ, edgeMaxX, edgeMaxY, edgeMaxZ) -> {
-                    float minX = (float) edgeMinX + offset;
-                    float minYEdge = (float) edgeMinY + offset;
-                    float minZ = (float) edgeMinZ + offset;
-                    float maxX = (float) edgeMaxX + offset;
-                    float maxYEdge = (float) edgeMaxY + offset;
-                    float maxZ = (float) edgeMaxZ + offset;
+                shape.forEachBox((boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ) -> {
+                    Box box = new Box(boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ)
+                            .expand(LevelRendererMixin.offset + offset);
 
-                    int minColor = colorForY(startColor, endColor, minYEdge, minY, maxY);
-                    int maxColor = colorForY(startColor, endColor, maxYEdge, minY, maxY);
-                    emitLine(lineConsumer, matrix, minX, minYEdge, minZ, minColor, maxX, maxYEdge, maxZ, maxColor, lineWidth);
+                    for (Direction face : Direction.values()) {
+                        drawFaceOutline(
+                                lineConsumer,
+                                matrix,
+                                box,
+                                face,
+                                startColor,
+                                endColor,
+                                minY,
+                                maxY,
+                                lineWidth
+                        );
+                    }
                 });
             } else {
                 shape.forEachBox((boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ) -> {
-                    Box box = new Box(boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ).expand(LevelRendererMixin.offset);
-                    drawFaceOutline(lineConsumer, matrix, box, side, startColor, endColor, minY, maxY, lineWidth, offset);
+                    Box box = new Box(boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ).expand(LevelRendererMixin.offset + offset);
+                    drawFaceOutline(lineConsumer, matrix, box, side, startColor, endColor, minY, maxY, lineWidth);
                 });
             }
         }
@@ -226,7 +232,7 @@ public class LevelRendererMixin {
     @Unique
     private void drawFaceOutline(VertexConsumer lineConsumer, Matrix4f matrix, Box expandedBox, Direction side,
                                  int startColor, int endColor, double minY, double maxY,
-                                 float lineWidth, float offset) {
+                                 float lineWidth) {
         float[][] corners = getFaceVertices(side, expandedBox);
 
         for (int i = 0; i < corners.length; i++) {
