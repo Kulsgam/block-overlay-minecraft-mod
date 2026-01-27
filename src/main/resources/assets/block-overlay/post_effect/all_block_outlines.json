@@ -4,7 +4,8 @@
   },
   "passes": [
     {
-      "program": "block-overlay:all_block_outlines",
+      "vertex_shader": "block-overlay:post/all_block_outlines",
+      "fragment_shader": "block-overlay:post/all_block_outlines",
       "inputs": [
         {
           "sampler_name": "In",
@@ -14,16 +15,6 @@
           "sampler_name": "Depth",
           "target": "minecraft:main",
           "use_depth_buffer": true
-        }
-      ],
-      "output": "swap"
-    },
-    {
-      "program": "minecraft:post/blit",
-      "inputs": [
-        {
-          "sampler_name": "In",
-          "target": "swap"
         }
       ],
       "output": "minecraft:main"
