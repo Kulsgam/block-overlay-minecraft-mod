@@ -1,12 +1,13 @@
 {
-	"required": true,
-	"package": "com.kulsgam.mixin",
-	"compatibilityLevel": "JAVA_21",
-	"client": [
-		"LevelRendererMixin",
-        "GameRendererMixin"
-	],
-	"injectors": {
-		"defaultRequire": 1
-	}
+  "required": true,
+  "package": "com.kulsgam.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "GameRendererMixin",
+    "LevelRendererMixin",
+    "accessor.GameRendererInvoker"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

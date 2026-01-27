@@ -1,0 +1,13 @@
+{
+  "vertex_shader": "block-overlay:post/all_block_outlines",
+  "fragment_shader": "block-overlay:post/all_block_outlines",
+  "samplers": [
+    {
+      "name": "In"
+    },
+    {
+      "name": "Depth"
+    }
+  ],
+  "uniforms": []
+}
