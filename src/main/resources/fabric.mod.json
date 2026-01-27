@@ -1,37 +1,41 @@
 {
-	"schemaVersion": 1,
-	"id": "block-overlay",
-	"version": "${version}",
-	"name": "Block Overlay",
-	"description": "Customizable block overlay rendering.",
-	"authors": [
-		"Kulsgam"
-	],
-	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
-	},
-	"license": "MIT",
-	"icon": "assets/block-overlay/icon.png",
-	"environment": "*",
-	"entrypoints": {
-		"main": [
-			"com.kulsgam.BlockOverlay"
-		],
-		"client": [
-			"com.kulsgam.BlockOverlayClient"
-		]
-	},
-	"mixins": [
-		{
-			"config": "block-overlay.client.mixins.json",
-			"environment": "client"
-		}
-	],
-	"depends": {
-		"fabricloader": ">=0.18.4",
-		"minecraft": "~1.21.11",
-		"java": ">=21",
-		"fabric-api": "*"
-	}
+  "schemaVersion": 1,
+  "id": "block-overlay",
+  "version": "${version}",
+  "name": "Block Overlay",
+  "description": "Customizable block overlay rendering.",
+  "authors": [
+    "Kulsgam"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+  "license": "MIT",
+  "icon": "assets/block-overlay/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.kulsgam.BlockOverlay"
+    ],
+    "client": [
+      "com.kulsgam.BlockOverlayClient"
+    ],
+    "modmenu": [
+      "com.kulsgam.menu.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "block-overlay.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*",
+    "modmenu": "~17.0.0-beta.2"
+  }
 }
