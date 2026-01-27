@@ -19,6 +19,7 @@ for more details.
 
 1. Outline of cauldrons and anvils are funky
 2. Dark overlays work worse than light ones due to a compromise made to add support to shaders
+3. Block fill opacity should be greater than 0.5
 
 ## References/Credits
 
