@@ -26,6 +26,8 @@ public class BlockOverlayClient implements ClientModInitializer {
         client = MinecraftClient.getInstance();
         Path configPath = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID + ".json");
         config = BlockOverlayConfig.load(configPath, logger);
+
+//        WorldRenderEvents.AFTER_ENTITIES.register(AllBlockOutlines::onAfterEntities);
     }
 
     public Logger getLogger() {
