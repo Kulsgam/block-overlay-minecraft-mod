@@ -13,6 +13,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.state.OutlineRenderState;
+import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -62,26 +63,43 @@ public class LevelRendererMixin {
         }
 
         BlockOverlayConfig config = BlockOverlayClient.instance.getConfig();
-        RenderMode renderMode = config.renderMode;
-        if (renderMode == RenderMode.VANILLA) {
-            return;
-        }
-        ci.cancel();
-        if (renderMode == RenderMode.HIDDEN) {
+        RenderSettings fillSettings = config.fillRender;
+        RenderSettings outlineSettings = config.outlineRender;
+        RenderMode fillMode = fillSettings.renderMode;
+        RenderMode outlineMode = outlineSettings.renderMode;
+
+        boolean renderFill = fillSettings.visible && (fillMode == RenderMode.FULL || fillMode == RenderMode.SIDE);
+        boolean renderOutline = outlineSettings.visible && (outlineMode == RenderMode.FULL || outlineMode == RenderMode.SIDE);
+        boolean hideOutline = outlineMode == RenderMode.HIDDEN;
+
+        if (!renderFill && !renderOutline && !hideOutline) {
             return;
         }
 
-        Direction side = null;
-        if (renderMode == RenderMode.SIDE) {
+        if (outlineMode != RenderMode.VANILLA) {
+            ci.cancel();
+        }
+
+        if (!renderFill && !renderOutline) {
+            return;
+        }
+        Direction selectedFace = null;
+        if ((renderFill && fillMode == RenderMode.SIDE) || (renderOutline && outlineMode == RenderMode.SIDE)) {
             HitResult hitResult = BlockOverlayClient.instance.getClient().crosshairTarget;
             if (hitResult instanceof BlockHitResult blockHitResult) {
-                side = blockHitResult.getSide();
+                selectedFace = blockHitResult.getSide();
             } else {
-                return;
+                if (renderFill && fillMode == RenderMode.SIDE) {
+                    renderFill = false;
+                }
+                if (renderOutline && outlineMode == RenderMode.SIDE) {
+                    renderOutline = false;
+                }
             }
         }
-        RenderSettings fillSettings = config.fillRender;
-        RenderSettings outlineSettings = config.outlineRender;
+        if (!renderFill && !renderOutline) {
+            return;
+        }
 
         matrices.push();
         matrices.translate(
@@ -91,20 +109,24 @@ public class LevelRendererMixin {
         );
 
         // Get buffer source - we need to get both consumers from here
-        VertexConsumerProvider.Immediate bufferSource = BlockOverlayClient.instance.getClient().
-                getBufferBuilders().getEntityVertexConsumers();
+        VertexConsumerProvider.Immediate bufferSource = outlineMode == RenderMode.VANILLA
+                ? VertexConsumerProvider.immediate(
+                new BufferAllocator(256))
+                : BlockOverlayClient.instance.getClient().getBufferBuilders().getEntityVertexConsumers();
 
         // Render fill first (if enabled)
-        if (fillSettings.visible) {
-            renderFill(bufferSource, shape, matrices, fillSettings, side);
+        if (renderFill) {
+            Direction fillSide = fillMode == RenderMode.SIDE ? selectedFace : null;
+            renderFill(bufferSource, shape, matrices, fillSettings, fillSide);
         }
 
         // Render outline - get our own line consumer since we cancelled vanilla setup
-        if (outlineSettings.visible) {
+        if (renderOutline) {
             boolean isShaderEnabled = ShaderStatus.isIrisShadersEnabled();
 
             double finalThickness = isShaderEnabled ? config.thickness * shaderThicknessMultiplier : config.thickness;
-            renderOutline(bufferSource, shape, matrices, outlineSettings, finalThickness, side);
+            Direction outlineSide = outlineMode == RenderMode.SIDE ? selectedFace : null;
+            renderOutline(bufferSource, shape, matrices, outlineSettings, finalThickness, outlineSide);
         }
 
         bufferSource.draw();

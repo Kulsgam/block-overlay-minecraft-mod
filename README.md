@@ -15,7 +15,6 @@ for more details.
 
 1. Outline of cauldrons and anvils are funky
 2. Dark overlays work worse than light ones due to a compromise made to add support to shaders
-3. Outline thickness is very minimal in shaders, especially when rendering only 1 side
 
 ## References/Credits
 

@@ -3,7 +3,6 @@ package com.kulsgam.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
-import com.kulsgam.utils.enums.RenderMode;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -15,7 +14,6 @@ import java.nio.file.Path;
 public class BlockOverlayConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public RenderMode renderMode = RenderMode.VANILLA;
     //    public float shaderThicknessMultiplier = 1f;
     public boolean persistence = false;
     public boolean depthless = false;
@@ -67,9 +65,6 @@ public class BlockOverlayConfig {
     }
 
     private void validate() {
-        if (renderMode == null) {
-            renderMode = RenderMode.VANILLA;
-        }
         thickness = clamp(thickness, 1.0, 10.0);
         if (fillRender == null) {
             fillRender = new RenderSettings("Fill");

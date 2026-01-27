@@ -19,7 +19,10 @@ public class GameRendererMixin {
         }
         BlockOverlayConfig config = client.getConfig();
         if (config != null) {
-            if (config.renderMode == RenderMode.HIDDEN) {
+            RenderMode outlineMode = config.outlineRender.renderMode;
+            RenderMode fillMode = config.fillRender.renderMode;
+            boolean fillCustom = fillMode == RenderMode.FULL || fillMode == RenderMode.SIDE;
+            if (outlineMode == RenderMode.HIDDEN && !fillCustom) {
                 cir.setReturnValue(false);
                 return;
             }

@@ -49,6 +49,7 @@ public class BlockOverlayScreen extends Screen {
     private MenuButton colorModeButton;
     private MenuButton propertyButton;
     private BaseSlider thicknessSlider;
+    private MenuButton renderModeButton;
     private boolean closing;
 
     public BlockOverlayScreen(BlockOverlayConfig config) {
@@ -124,10 +125,10 @@ public class BlockOverlayScreen extends Screen {
         leftComponents.add(propertyButton);
 
         x = width - 110;
-        MenuButton renderModeButton = new MenuButton(x, height / 2 - 96, 100, 20, "Render: ",
-                EnumUtils.getOrdinal(RenderMode.class, config.renderMode.name()),
+        renderModeButton = new MenuButton(x, height / 2 - 96, 100, 20, "Render: ",
+                EnumUtils.getOrdinal(RenderMode.class, property.renderMode.name()),
                 Arrays.stream(EnumUtils.getNames(RenderMode.class)).map(this::formatName).toArray(String[]::new),
-                index -> config.renderMode = RenderMode.values()[index]);
+                index -> property.renderMode = RenderMode.values()[index]);
         rightComponents.add(renderModeButton);
 
         thicknessSlider = new BaseSlider(x, height / 2 - 68, 100, 20, "Outline Thickness", 1.0, 10.0,
@@ -224,6 +225,7 @@ public class BlockOverlayScreen extends Screen {
         fadeColorButton.setIndex(fadeColorIndex);
         colorModeButton.setIndex(EnumUtils.getOrdinal(ColorMode.class, property.colorMode.name()));
         propertyButton.setIndex(propertyRenderIndex);
+        renderModeButton.setIndex(EnumUtils.getOrdinal(RenderMode.class, property.renderMode.name()));
 
         switch (property.colorMode) {
             case STATIC -> {

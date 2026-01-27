@@ -3,6 +3,7 @@ package com.kulsgam.config;
 import com.kulsgam.utils.ColorUtils;
 import com.kulsgam.utils.EnumUtils;
 import com.kulsgam.utils.enums.ColorMode;
+import com.kulsgam.utils.enums.RenderMode;
 
 public class RenderSettings {
     public final String name;
@@ -16,9 +17,14 @@ public class RenderSettings {
     public boolean visible = true;
     public double fadeSpeed = 5.5;
     public double chromaSpeed = 5.5;
+    public RenderMode renderMode = RenderMode.VANILLA;
 
     public RenderSettings(String name) {
         this.name = name;
+    }
+
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     public int getHue(int index) {
@@ -145,6 +151,9 @@ public class RenderSettings {
         if (colorMode == null) {
             colorMode = ColorMode.STATIC;
         }
+        if (renderMode == null) {
+            renderMode = RenderMode.VANILLA;
+        }
         if (chromaOpacity < 0.07) {
             chromaOpacity = 0.07;
         }
@@ -153,9 +162,5 @@ public class RenderSettings {
         }
         fadeSpeed = clamp(fadeSpeed, 1.0, 10.0);
         chromaSpeed = clamp(chromaSpeed, 1.0, 10.0);
-    }
-
-    private static double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
     }
 }
