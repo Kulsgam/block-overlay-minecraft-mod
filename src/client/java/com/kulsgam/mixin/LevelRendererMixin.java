@@ -9,6 +9,7 @@ import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.config.RenderSettings;
 import com.kulsgam.utils.ShaderStatus;
 import com.kulsgam.utils.enums.RenderMode;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.*;
@@ -67,6 +68,7 @@ public class LevelRendererMixin {
         RenderSettings outlineSettings = config.outlineRender;
         RenderMode fillMode = fillSettings.renderMode;
         RenderMode outlineMode = outlineSettings.renderMode;
+        boolean depthless = config.depthless || isCameraInFluid(camX, camY, camZ);
 
         boolean renderFill = fillSettings.visible && (fillMode == RenderMode.FULL || fillMode == RenderMode.SIDE);
         boolean renderOutline = outlineSettings.visible && (outlineMode == RenderMode.FULL || outlineMode == RenderMode.SIDE);
@@ -124,7 +126,8 @@ public class LevelRendererMixin {
                         outlineSettings,
                         renderFill,
                         renderOutline,
-                        selectedFace
+                        selectedFace,
+                        depthless
                 );
 
                 bufferSource.draw();
@@ -144,7 +147,8 @@ public class LevelRendererMixin {
                     outlineSettings,
                     renderFill,
                     renderOutline,
-                    selectedFace
+                    selectedFace,
+                    depthless
             );
         }
         matrices.pop();
@@ -160,32 +164,44 @@ public class LevelRendererMixin {
             RenderSettings outlineSettings,
             boolean renderFill,
             boolean renderOutline,
-            Direction selectedFace
+            Direction selectedFace,
+            boolean depthless
     ) {
-        if (renderFill) {
-            Direction fillSide =
-                    fillSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
-
-            renderFill(bufferSource, shape, matrices, fillSettings, fillSide);
+        if (depthless) {
+            RenderSystem.disableDepthTest();
+            RenderSystem.depthMask(false);
         }
+        try {
+            if (renderFill) {
+                Direction fillSide =
+                        fillSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
 
-        if (renderOutline) {
-            boolean shaderEnabled = ShaderStatus.isIrisShadersEnabled();
-            double finalThickness = shaderEnabled
-                    ? config.thickness * shaderThicknessMultiplier
-                    : config.thickness;
+                renderFill(bufferSource, shape, matrices, fillSettings, fillSide);
+            }
 
-            Direction outlineSide =
-                    outlineSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
+            if (renderOutline) {
+                boolean shaderEnabled = ShaderStatus.isIrisShadersEnabled();
+                double finalThickness = shaderEnabled
+                        ? config.thickness * shaderThicknessMultiplier
+                        : config.thickness;
 
-            renderOutline(
-                    bufferSource,
-                    shape,
-                    matrices,
-                    outlineSettings,
-                    finalThickness,
-                    outlineSide
-            );
+                Direction outlineSide =
+                        outlineSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
+
+                renderOutline(
+                        bufferSource,
+                        shape,
+                        matrices,
+                        outlineSettings,
+                        finalThickness,
+                        outlineSide
+                );
+            }
+        } finally {
+            if (depthless) {
+                RenderSystem.depthMask(true);
+                RenderSystem.enableDepthTest();
+            }
         }
     }
 
@@ -203,6 +219,20 @@ public class LevelRendererMixin {
         BlockPos cameraPos = BlockPos.ofFloored(camX, camY, camZ);
         BlockState cameraState = BlockOverlayClient.instance.getClient().world.getBlockState(cameraPos);
         return !cameraState.isAir() && cameraState.shouldSuffocate(BlockOverlayClient.instance.getClient().world, cameraPos);
+    }
+
+    @Unique
+    private boolean isCameraInFluid(double camX, double camY, double camZ) {
+        if (BlockOverlayClient.instance == null || BlockOverlayClient.instance.getClient() == null) {
+            return false;
+        }
+
+        if (BlockOverlayClient.instance.getClient().world == null) {
+            return false;
+        }
+
+        BlockPos cameraPos = BlockPos.ofFloored(camX, camY, camZ);
+        return !BlockOverlayClient.instance.getClient().world.getFluidState(cameraPos).isEmpty();
     }
 
     @Unique
