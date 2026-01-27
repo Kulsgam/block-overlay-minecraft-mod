@@ -29,11 +29,11 @@ public class BlockOverlayClient implements ClientModInitializer {
     public void onInitializeClient() {
         instance = this;
         client = MinecraftClient.getInstance();
-        Path configPath = FabricLoader.getInstance().getConfigDir().resolve("blockoverlay.json");
+        Path configPath = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID + ".json");
         config = BlockOverlayConfig.load(configPath, logger);
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-                dispatcher.register(literal("blockoverlay").executes(context -> {
+                dispatcher.register(literal(MOD_ID).executes(context -> {
                     openScreen(new BlockOverlayScreen(config));
                     return 1;
                 }))
