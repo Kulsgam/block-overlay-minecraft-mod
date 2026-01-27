@@ -9,6 +9,7 @@ import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.config.RenderSettings;
 import com.kulsgam.utils.ShaderStatus;
 import com.kulsgam.utils.enums.RenderMode;
+import net.minecraft.block.BlockState;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.state.OutlineRenderState;
@@ -52,6 +53,11 @@ public class LevelRendererMixin {
 
         if (shape.isEmpty()) {
             BlockOverlayClient.instance.getLogger().info("Shape is empty");
+            return;
+        }
+
+        if (isViewObstructed(camX, camY, camZ)) {
+            ci.cancel();
             return;
         }
 
@@ -103,6 +109,21 @@ public class LevelRendererMixin {
 
         bufferSource.draw();
         matrices.pop();
+    }
+
+    @Unique
+    private boolean isViewObstructed(double camX, double camY, double camZ) {
+        if (BlockOverlayClient.instance == null || BlockOverlayClient.instance.getClient() == null) {
+            return false;
+        }
+
+        if (BlockOverlayClient.instance.getClient().world == null) {
+            return false;
+        }
+
+        BlockPos cameraPos = BlockPos.ofFloored(camX, camY, camZ);
+        BlockState cameraState = BlockOverlayClient.instance.getClient().world.getBlockState(cameraPos);
+        return !cameraState.isAir() && cameraState.shouldSuffocate(BlockOverlayClient.instance.getClient().world, cameraPos);
     }
 
     @Unique
