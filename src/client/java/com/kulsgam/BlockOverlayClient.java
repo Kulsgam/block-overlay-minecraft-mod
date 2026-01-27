@@ -2,8 +2,11 @@ package com.kulsgam;
 
 import com.kulsgam.config.BlockOverlayConfig;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockRenderLayerMap;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.BlockRenderLayer;
+import net.minecraft.fluid.Fluids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +29,12 @@ public class BlockOverlayClient implements ClientModInitializer {
         client = MinecraftClient.getInstance();
         Path configPath = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID + ".json");
         config = BlockOverlayConfig.load(configPath, logger);
+
+        BlockRenderLayerMap.putFluids(
+                BlockRenderLayer.TRANSLUCENT,
+                Fluids.LAVA,
+                Fluids.FLOWING_LAVA
+        );
 
 //        WorldRenderEvents.AFTER_ENTITIES.register(AllBlockOutlines::onAfterEntities);
     }

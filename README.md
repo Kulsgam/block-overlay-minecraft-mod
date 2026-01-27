@@ -2,9 +2,13 @@
 
 Customizable block overlay rendering compatible with shaders, spectator mode, and adventure mode
 
+## Notes
+
+- Currently rendering the block overlay through lava is not supported, however, fluid translucency has been added with this mod. So, if a texture pack is used that has translucent `lava_still.png` and `lava_flow.png` files, then visibility of the overlay would be improved. I have created a simple texture pack that sets the transparency to 0.5 and it works well for me.
+
 ## Features
 
-TODO
+1. Show the outline of the block that would be placed if a placable item is held
 
 ## Licence
 
