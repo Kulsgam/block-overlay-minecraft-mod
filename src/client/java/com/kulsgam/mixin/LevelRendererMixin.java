@@ -32,6 +32,8 @@ public class LevelRendererMixin {
     private static float offset = 0.001f;
     @Unique
     private static float offsetIncrement = 0.001f;
+    @Unique
+    private static float shaderThicknessMultiplier = 10 / 3.5f;
 
     @Inject(method = "drawBlockOutline", at = @At("HEAD"), cancellable = true)
     private void onRenderOverlay(
@@ -95,7 +97,7 @@ public class LevelRendererMixin {
         if (outlineSettings.visible) {
             boolean isShaderEnabled = ShaderStatus.isIrisShadersEnabled();
 
-            double finalThickness = isShaderEnabled ? 1 : config.thickness;
+            double finalThickness = isShaderEnabled ? config.thickness * shaderThicknessMultiplier : config.thickness;
             renderOutline(bufferSource, shape, matrices, outlineSettings, finalThickness, side);
         }
 
