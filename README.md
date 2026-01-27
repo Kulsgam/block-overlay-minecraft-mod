@@ -11,6 +11,12 @@ TODO
 This mod is available under the GPLv3 licence. Refer the `LICENSE` and `THIRD_PARTY_LICENSES` files at the project root
 for more details.
 
+## Issues
+
+1. Outline of cauldrons and anvils are funky
+2. Dark overlays work worse than light ones due to a compromise made to add support to shaders
+3. Outline thickness is very minimal in shaders, especially when rendering only 1 side
+
 ## References/Credits
 
 1. [Block Overlay Mod 4.0.3 (1.8.9)](https://hypixel.net/threads/forge-1-8-9-block-overlay-v4-0-3.1417995/) (Heavy

@@ -16,7 +16,7 @@ public class BlockOverlayConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public RenderMode renderMode = RenderMode.VANILLA;
-    public float shaderThicknessMultiplier = 20f;
+    //    public float shaderThicknessMultiplier = 1f;
     public boolean persistence = false;
     public boolean depthless = false;
     public boolean barriers = false;

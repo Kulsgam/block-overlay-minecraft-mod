@@ -94,7 +94,8 @@ public class LevelRendererMixin {
         // Render outline - get our own line consumer since we cancelled vanilla setup
         if (outlineSettings.visible) {
             boolean isShaderEnabled = ShaderStatus.isIrisShadersEnabled();
-            double finalThickness = config.thickness * (isShaderEnabled ? config.shaderThicknessMultiplier : 1);
+
+            double finalThickness = isShaderEnabled ? Math.max(config.thickness, 1) : config.thickness;
             renderOutline(bufferSource, shape, matrices, outlineSettings, finalThickness, side);
         }
 
