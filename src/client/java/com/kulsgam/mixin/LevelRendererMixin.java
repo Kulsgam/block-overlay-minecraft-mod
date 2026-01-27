@@ -108,30 +108,87 @@ public class LevelRendererMixin {
                 (double) blockPos.getZ() - camZ
         );
 
-        // Get buffer source - we need to get both consumers from here
-        VertexConsumerProvider.Immediate bufferSource = outlineMode == RenderMode.VANILLA
-                ? VertexConsumerProvider.immediate(
-                new BufferAllocator(256))
-                : BlockOverlayClient.instance.getClient().getBufferBuilders().getEntityVertexConsumers();
+        boolean ownsBufferSource = outlineMode == RenderMode.VANILLA;
 
-        // Render fill first (if enabled)
+        if (ownsBufferSource) {
+            try (BufferAllocator allocator = new BufferAllocator(256)) {
+                VertexConsumerProvider.Immediate bufferSource =
+                        VertexConsumerProvider.immediate(allocator);
+
+                renderOverlayInternal(
+                        bufferSource,
+                        shape,
+                        matrices,
+                        config,
+                        fillSettings,
+                        outlineSettings,
+                        renderFill,
+                        renderOutline,
+                        selectedFace
+                );
+
+                bufferSource.draw();
+            }
+        } else {
+            VertexConsumerProvider.Immediate bufferSource =
+                    BlockOverlayClient.instance.getClient()
+                            .getBufferBuilders()
+                            .getEntityVertexConsumers();
+
+            renderOverlayInternal(
+                    bufferSource,
+                    shape,
+                    matrices,
+                    config,
+                    fillSettings,
+                    outlineSettings,
+                    renderFill,
+                    renderOutline,
+                    selectedFace
+            );
+        }
+        matrices.pop();
+    }
+
+    @Unique
+    private void renderOverlayInternal(
+            VertexConsumerProvider.Immediate bufferSource,
+            VoxelShape shape,
+            MatrixStack matrices,
+            BlockOverlayConfig config,
+            RenderSettings fillSettings,
+            RenderSettings outlineSettings,
+            boolean renderFill,
+            boolean renderOutline,
+            Direction selectedFace
+    ) {
         if (renderFill) {
-            Direction fillSide = fillMode == RenderMode.SIDE ? selectedFace : null;
+            Direction fillSide =
+                    fillSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
+
             renderFill(bufferSource, shape, matrices, fillSettings, fillSide);
         }
 
-        // Render outline - get our own line consumer since we cancelled vanilla setup
         if (renderOutline) {
-            boolean isShaderEnabled = ShaderStatus.isIrisShadersEnabled();
+            boolean shaderEnabled = ShaderStatus.isIrisShadersEnabled();
+            double finalThickness = shaderEnabled
+                    ? config.thickness * shaderThicknessMultiplier
+                    : config.thickness;
 
-            double finalThickness = isShaderEnabled ? config.thickness * shaderThicknessMultiplier : config.thickness;
-            Direction outlineSide = outlineMode == RenderMode.SIDE ? selectedFace : null;
-            renderOutline(bufferSource, shape, matrices, outlineSettings, finalThickness, outlineSide);
+            Direction outlineSide =
+                    outlineSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
+
+            renderOutline(
+                    bufferSource,
+                    shape,
+                    matrices,
+                    outlineSettings,
+                    finalThickness,
+                    outlineSide
+            );
         }
-
-        bufferSource.draw();
-        matrices.pop();
     }
+
 
     @Unique
     private boolean isViewObstructed(double camX, double camY, double camZ) {
