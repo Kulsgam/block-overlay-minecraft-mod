@@ -31,7 +31,7 @@ for more details.
 8. https://github.com/FabricMC/yarn/blob/3ce892a659aa977aa50d1cb90a96dfcf270d4ba0/filament/src/test/resources/projects/sharedData/yarn-mappings-v2.tiny
 9. https://raw.githubusercontent.com/FabricMC/intermediary/refs/heads/master/mappings/1.21.11.tiny
 
-## Learned things
+## Knowledge used
 
 ### Mojang to Yarn Mappings
 
