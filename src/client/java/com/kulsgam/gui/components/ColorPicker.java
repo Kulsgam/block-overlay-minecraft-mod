@@ -20,7 +20,7 @@ import java.util.function.IntConsumer;
 public class ColorPicker extends ClickableWidget {
     private static final int SIZE = 200;
     private static final Identifier COLOR_PICKER_TEXTURE_ID =
-            Identifier.of("kulsgam", "block-overlay_color_picker");
+            Identifier.of("block-overlay", "color_picker");
     private final MinecraftClient client;
     private final Identifier textureId;
     private final IntConsumer onChange;
