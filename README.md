@@ -4,7 +4,7 @@ Customizable block overlay rendering compatible with shaders, spectator mode, an
 
 ## Notes
 
-- Currently rendering the block overlay through lava is not supported, however, fluid translucency has been added with this mod. So, if a texture pack is used that has translucent `lava_still.png` and `lava_flow.png` files, then visibility of the overlay would be improved. I have created a simple texture pack that sets the transparency to 0.5 and it works well for me.
+- Currently rendering the block overlay through lava is not supported, however, fluid translucency has been added with this mod. So, if a texture pack is used that has translucent `lava_still.png` and `lava_flow.png` files, then visibility of the overlay would be improved (TIP - Make sure to include the .mcmeta files of the lava files too). I have created a simple texture pack that sets the transparency to 0.5 and it works well for me.
 
 ## Features
 
