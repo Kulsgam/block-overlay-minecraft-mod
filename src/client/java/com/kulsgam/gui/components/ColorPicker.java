@@ -1,6 +1,5 @@
 package com.kulsgam.gui.components;
 
-import java.awt.Color;
 import com.kulsgam.utils.GuiUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.RenderPipelines;
@@ -15,23 +14,22 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 
+import java.awt.*;
 import java.util.function.IntConsumer;
 
 public class ColorPicker extends ClickableWidget {
     private static final int SIZE = 200;
-
+    private static final Identifier COLOR_PICKER_TEXTURE_ID =
+            Identifier.of("kulsgam", "blockoverlay_color_picker");
     private final MinecraftClient client;
-    private NativeImage backgroundImage;
-    private NativeImageBackedTexture texture;
     private final Identifier textureId;
     private final IntConsumer onChange;
+    private NativeImage backgroundImage;
+    private NativeImageBackedTexture texture;
     private boolean dragging;
     private int selectorX;
     private int selectorY;
     private int color;
-
-    private static final Identifier COLOR_PICKER_TEXTURE_ID =
-            Identifier.of("kulsgam", "blockoverlay_color_picker");
 
     public ColorPicker(int x, int y, int width, int height, Color hue, IntConsumer onChange) {
         super(x, y, width, height, Text.literal(""));
@@ -112,7 +110,7 @@ public class ColorPicker extends ClickableWidget {
             for (int y = 0; y < SIZE; y++) {
                 float brightness = 1.0f - (float) y / (float) SIZE;
                 int rgb = Color.getHSBColor(Color.RGBtoHSB(hue.getRed(), hue.getGreen(), hue.getBlue(), null)[0], saturation, brightness).getRGB();
-                backgroundImage.setColor(x, y, toAbgr(rgb));
+                backgroundImage.setColorArgb(x, y, rgb);
             }
         }
         if (texture == null) {
@@ -148,7 +146,7 @@ public class ColorPicker extends ClickableWidget {
         int x = MathHelper.clamp((int) ((selectorX - getX()) * scaleX), 0, SIZE - 1);
         int y = MathHelper.clamp((int) ((selectorY - getY()) * scaleY), 0, SIZE - 1);
 
-        color = fromAbgr(backgroundImage.getColorArgb(x, y));
+        color = backgroundImage.getColorArgb(x, y);
         if (onChange != null) {
             onChange.accept(color);
         }
@@ -165,22 +163,6 @@ public class ColorPicker extends ClickableWidget {
         } else if (selectorY > getY() + getHeight() - 5) {
             selectorY = getY() + getHeight() - 5;
         }
-    }
-
-    private int toAbgr(int argb) {
-        return applyAbgr(argb);
-    }
-
-    private int fromAbgr(int abgr) {
-        return applyAbgr(abgr);
-    }
-
-    private int applyAbgr(int abgr) {
-        int a = (abgr >> 24) & 0xFF;
-        int b = (abgr >> 16) & 0xFF;
-        int g = (abgr >> 8) & 0xFF;
-        int r = abgr & 0xFF;
-        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     @Override
