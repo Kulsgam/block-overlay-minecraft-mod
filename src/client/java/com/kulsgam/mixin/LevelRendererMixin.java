@@ -257,6 +257,16 @@ public class LevelRendererMixin {
     }
 
     @Unique
+    int getFillColor(RenderSettings fillSettings, Direction selectedFace) {
+        int fillColor = fillSettings.getStart();
+        if (selectedFace != null) {
+            return fillColor;
+        }
+
+        return adjustFillOpacityForFull(fillColor);
+    }
+
+    @Unique
     private void renderFill(
             VertexConsumerProvider.Immediate bufferSource,
             VoxelShape shape,
@@ -264,7 +274,7 @@ public class LevelRendererMixin {
             RenderSettings fillSettings,
             Direction selectedFace
     ) {
-        int fillColor = fillSettings.getStart();
+        int fillColor = getFillColor(fillSettings, selectedFace);
         RenderLayer fillLayer = RenderLayer.of(
                 "block_overlay_fill",
                 RenderSetup.builder(RenderPipelines.DEBUG_QUADS)
@@ -297,6 +307,20 @@ public class LevelRendererMixin {
                 }
             }
         });
+    }
+
+    @Unique
+    private int adjustFillOpacityForFull(int argbColor) {
+        // when you render all faces of the cube, multiple translucent quads overlap in screen space
+        // So opacity accumulates, so this method is needed to have the same opacity scale
+        int alpha = (argbColor >>> 24) & 0xFF;
+        if (alpha == 0xFF || alpha == 0x00) {
+            return argbColor;
+        }
+        double normalizedAlpha = alpha / 255.0;
+        double adjustedAlpha = 1.0 - Math.sqrt(1.0 - normalizedAlpha);
+        int adjusted = (int) Math.round(adjustedAlpha * 255.0);
+        return (adjusted << 24) | (argbColor & 0xFFFFFF);
     }
 
     @Unique

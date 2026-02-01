@@ -21,8 +21,7 @@ for more details.
 ## Issues
 
 1. Outline of cauldrons and anvils are funky
-2. The scale for block fill opacity is different for full rendering for fill mode compared to side rendering
-3. The fill overlaps with the outline, making the outline lighter
+2. The fill overlaps with the outline, making the outline lighter
 
 ## References/Credits
 
