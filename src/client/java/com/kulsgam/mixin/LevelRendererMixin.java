@@ -69,13 +69,14 @@ public class LevelRendererMixin {
             .withBlend(BlendFunction.TRANSLUCENT)
             .withCull(false)
             .withVertexFormat(VertexFormats.POSITION_COLOR_NORMAL_LINE_WIDTH, VertexFormat.DrawMode.LINES)
-            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+            .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .withDepthWrite(false)
             .build();
     @Unique
     private static final RenderLayer OUTLINE_LINE_LAYER = RenderLayer.of(
             "block_overlay_lines",
             RenderSetup.builder(OUTLINE_LINE_PIPELINE)
+                    .outputTarget(OutputTarget.OUTLINE_TARGET)
                     .translucent()
                     .build()
     );
