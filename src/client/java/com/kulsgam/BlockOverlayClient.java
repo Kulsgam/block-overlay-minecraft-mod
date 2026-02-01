@@ -18,6 +18,8 @@ public class BlockOverlayClient implements ClientModInitializer {
     public static final String NAME = "Block Overlay";
     public static final String VERSION = "1.0.0";
 
+    public static final float shaderOpacityMultiplier = 0.63f;
+
     public static BlockOverlayClient instance;
 
     private final Logger logger = LoggerFactory.getLogger(MOD_ID);

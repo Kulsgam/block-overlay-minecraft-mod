@@ -1,5 +1,6 @@
 package com.kulsgam.config;
 
+import com.kulsgam.BlockOverlayClient;
 import com.kulsgam.utils.ColorUtils;
 import com.kulsgam.utils.EnumUtils;
 import com.kulsgam.utils.enums.ColorMode;
@@ -119,25 +120,26 @@ public class RenderSettings {
         }
     }
 
-    public int getStart() {
+    public int getStart(boolean shaderEnabled) {
         return switch (EnumUtils.fromName(ColorMode.class, colorMode.name())) {
-            case STATIC -> staticColor.getColor();
-            case GRADIENT -> gradientStartColor.getColor();
+            case STATIC -> staticColor.getColor(shaderEnabled);
+            case GRADIENT -> gradientStartColor.getColor(shaderEnabled);
             case FADE -> {
                 double percent = Math.sin(System.currentTimeMillis() / (1100.0 - fadeSpeed * 100.0)) * 0.5 + 0.5;
-                yield ColorUtils.interpolate(fadeStartColor.getColor(), fadeEndColor.getColor(), percent);
+                yield ColorUtils.interpolate(fadeStartColor.getColor(shaderEnabled), fadeEndColor.getColor(shaderEnabled), percent);
             }
-            case CHROMA -> ColorUtils.setAlpha(ColorUtils.getChroma(chromaSpeed), chromaOpacity);
+            case CHROMA ->
+                    ColorUtils.setAlpha(ColorUtils.getChroma(chromaSpeed), shaderEnabled ? chromaOpacity * BlockOverlayClient.shaderOpacityMultiplier : chromaOpacity);
         };
     }
 
-    public int getEnd() {
+    public int getEnd(boolean shaderEnabled) {
         return switch (EnumUtils.fromName(ColorMode.class, colorMode.name())) {
-            case STATIC, CHROMA -> getStart();
-            case GRADIENT -> gradientEndColor.getColor();
+            case STATIC, CHROMA -> getStart(shaderEnabled);
+            case GRADIENT -> gradientEndColor.getColor(shaderEnabled);
             case FADE -> {
                 double percent = Math.sin((System.currentTimeMillis() + 500L) / (1100.0 - fadeSpeed * 100.0)) * 0.5 + 0.5;
-                yield ColorUtils.interpolate(fadeStartColor.getColor(), fadeEndColor.getColor(), percent);
+                yield ColorUtils.interpolate(fadeStartColor.getColor(shaderEnabled), fadeEndColor.getColor(shaderEnabled), percent);
             }
         };
     }

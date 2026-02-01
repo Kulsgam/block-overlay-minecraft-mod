@@ -9,9 +9,6 @@ import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.config.RenderSettings;
 import com.kulsgam.utils.ShaderStatus;
 import com.kulsgam.utils.enums.RenderMode;
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.*;
@@ -31,16 +28,14 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import static net.minecraft.client.gl.RenderPipelines.TRANSFORMS_PROJECTION_FOG_SNIPPET;
-
 @Mixin(WorldRenderer.class)
 public class LevelRendererMixin {
     @Unique
-    private static float offset = 0.001f;
+    private static final float offset = 0.001f;
     @Unique
-    private static float offsetIncrement = 0.001f;
+    private static final float offsetIncrement = 0.001f;
     @Unique
-    private static float shaderThicknessMultiplier = 10 / 3.5f;
+    private static final float shaderThicknessMultiplier = 10 / 3.5f;
 
     @Inject(method = "drawBlockOutline", at = @At("HEAD"), cancellable = true)
     private void onRenderOverlay(
@@ -167,15 +162,15 @@ public class LevelRendererMixin {
             boolean renderOutline,
             Direction selectedFace
     ) {
+        boolean shaderEnabled = ShaderStatus.isIrisShadersEnabled();
         if (renderFill) {
             Direction fillSide =
                     fillSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
 
-            renderFill(bufferSource, shape, matrices, fillSettings, fillSide);
+            renderFill(bufferSource, shape, matrices, fillSettings, fillSide, shaderEnabled);
         }
 
         if (renderOutline) {
-            boolean shaderEnabled = ShaderStatus.isIrisShadersEnabled();
             double finalThickness = shaderEnabled
                     ? config.thickness * shaderThicknessMultiplier
                     : config.thickness;
@@ -189,7 +184,8 @@ public class LevelRendererMixin {
                     matrices,
                     outlineSettings,
                     finalThickness,
-                    outlineSide
+                    outlineSide,
+                    shaderEnabled
             );
         }
     }
@@ -212,9 +208,9 @@ public class LevelRendererMixin {
 
     @Unique
     private void renderOutline(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, MatrixStack matrices,
-                               RenderSettings outlineSettings, double thickness, Direction side) {
-        int startColor = outlineSettings.getStart();
-        int endColor = outlineSettings.getEnd();
+                               RenderSettings outlineSettings, double thickness, Direction side, boolean shaderEnabled) {
+        int startColor = outlineSettings.getStart(shaderEnabled);
+        int endColor = outlineSettings.getEnd(shaderEnabled);
         float lineWidth = (float) thickness;
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         Box bounds = shape.getBoundingBox();
@@ -265,9 +261,10 @@ public class LevelRendererMixin {
             VoxelShape shape,
             MatrixStack matrices,
             RenderSettings fillSettings,
-            Direction selectedFace
+            Direction selectedFace,
+            boolean shaderEnabled
     ) {
-        int fillColor = fillSettings.getStart();
+        int fillColor = fillSettings.getStart(shaderEnabled);
 //        RenderPipeline tmp = RenderPipeline.builder(new RenderPipeline.Snippet[]{TRANSFORMS_PROJECTION_FOG_SNIPPET}).withLocation("pipeline/lightning").withVertexShader("core/rendertype_lightning").withFragmentShader("core/rendertype_lightning").withBlend(BlendFunction.LIGHTNING).withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.QUADS).build();
 
         RenderLayer fillLayer = RenderLayer.of(
