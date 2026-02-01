@@ -276,14 +276,12 @@ public class LevelRendererMixin {
         Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
 
         shape.forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> {
+            // A slight inset is required so it doesn't interact with the outline
             Box expandedBox = new Box(minX, minY, minZ, maxX, maxY, maxZ)
-                    .expand(offset);
-            // NOTE: I have forgotten the reason I expand the box for fill, but insetting seems to be working fine too
-            // But it seemed to fix some rendering issues earlier before I found the cause of the bug, so I'm going to leave it here
-//            Box expandedBox = new Box(minX, minY, minZ, maxX, maxY, maxZ)
-//                    .expand(-fillInset);
+                    .expand(-fillInset);
 
             if (selectedFace != null) {
+                // One side
                 float[][] faceVertices = getFaceVertices(selectedFace, expandedBox);
                 emitQuad(fillConsumer, positionMatrix,
                         faceVertices[0], faceVertices[1],
