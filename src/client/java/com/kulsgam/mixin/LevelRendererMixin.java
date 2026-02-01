@@ -20,6 +20,7 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
@@ -38,6 +39,8 @@ public class LevelRendererMixin {
     private final static float shaderThicknessMultiplier = 10 / 3.5f;
     @Unique
     private final static float fillInset = 0.0005f;
+    @Unique
+    private final static float fullFillInsetPadding = 0.0005f;
 
     @Inject(method = "drawBlockOutline", at = @At("HEAD"), cancellable = true)
     private void onRenderOverlay(
@@ -103,6 +106,12 @@ public class LevelRendererMixin {
             return;
         }
 
+        Vec3d cameraPosition = new Vec3d(
+                camX - blockPos.getX(),
+                camY - blockPos.getY(),
+                camZ - blockPos.getZ()
+        );
+
         matrices.push();
         matrices.translate(
                 (double) blockPos.getX() - camX,
@@ -126,7 +135,8 @@ public class LevelRendererMixin {
                         outlineSettings,
                         renderFill,
                         renderOutline,
-                        selectedFace
+                        selectedFace,
+                        cameraPosition
                 );
 
                 bufferSource.draw();
@@ -146,7 +156,8 @@ public class LevelRendererMixin {
                     outlineSettings,
                     renderFill,
                     renderOutline,
-                    selectedFace
+                    selectedFace,
+                    cameraPosition
             );
         }
         matrices.pop();
@@ -162,13 +173,15 @@ public class LevelRendererMixin {
             RenderSettings outlineSettings,
             boolean renderFill,
             boolean renderOutline,
-            Direction selectedFace
+            Direction selectedFace,
+            Vec3d cameraPosition
     ) {
         if (renderFill) {
             Direction fillSide =
                     fillSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
 
-            renderFill(bufferSource, shape, matrices, fillSettings, fillSide);
+            float inset = getFillInset(config, fillSettings);
+            renderFill(bufferSource, shape, matrices, fillSettings, fillSide, inset);
         }
 
         if (renderOutline) {
@@ -179,6 +192,9 @@ public class LevelRendererMixin {
 
             Direction outlineSide =
                     outlineSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
+            boolean cullOutlineFaces = renderFill
+                    && fillSettings.renderMode == RenderMode.FULL
+                    && outlineSettings.renderMode == RenderMode.FULL;
 
             renderOutline(
                     bufferSource,
@@ -186,7 +202,9 @@ public class LevelRendererMixin {
                     matrices,
                     outlineSettings,
                     finalThickness,
-                    outlineSide
+                    outlineSide,
+                    cullOutlineFaces,
+                    cameraPosition
             );
         }
     }
@@ -209,7 +227,8 @@ public class LevelRendererMixin {
 
     @Unique
     private void renderOutline(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, MatrixStack matrices,
-                               RenderSettings outlineSettings, double thickness, Direction side) {
+                               RenderSettings outlineSettings, double thickness, Direction side,
+                               boolean cullOutlineFaces, Vec3d cameraPosition) {
         int startColor = outlineSettings.getStart();
         int endColor = outlineSettings.getEnd();
         float lineWidth = (float) thickness;
@@ -230,6 +249,9 @@ public class LevelRendererMixin {
                             .expand(LevelRendererMixin.offset + offset);
 
                     for (Direction face : Direction.values()) {
+                        if (cullOutlineFaces && !isFaceVisible(face, box, cameraPosition)) {
+                            continue;
+                        }
                         drawFaceOutline(
                                 lineConsumer,
                                 matrix,
@@ -272,7 +294,8 @@ public class LevelRendererMixin {
             VoxelShape shape,
             MatrixStack matrices,
             RenderSettings fillSettings,
-            Direction selectedFace
+            Direction selectedFace,
+            float inset
     ) {
         int fillColor = getFillColor(fillSettings, selectedFace);
         RenderLayer fillLayer = RenderLayer.of(
@@ -288,7 +311,7 @@ public class LevelRendererMixin {
         shape.forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> {
             // A slight inset is required so it doesn't interact with the outline
             Box expandedBox = new Box(minX, minY, minZ, maxX, maxY, maxZ)
-                    .expand(-fillInset);
+                    .expand(-inset);
 
             if (selectedFace != null) {
                 // One side
@@ -458,5 +481,33 @@ public class LevelRendererMixin {
         int g = (int) (g0 + (g1 - g0) * t);
         int b = (int) (b0 + (b1 - b0) * t);
         return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    @Unique
+    private float getFillInset(BlockOverlayConfig config, RenderSettings fillSettings) {
+        if (fillSettings.renderMode == RenderMode.SIDE) {
+            return fillInset;
+        }
+        double thickness = Math.max(1.0, Math.ceil(config.thickness));
+        return (float) (fillInset + offset + (offsetIncrement * thickness) + fullFillInsetPadding);
+    }
+
+    @Unique
+    private boolean isFaceVisible(Direction face, Box box, Vec3d cameraPosition) {
+        boolean inside =
+                cameraPosition.x >= box.minX && cameraPosition.x <= box.maxX
+                        && cameraPosition.y >= box.minY && cameraPosition.y <= box.maxY
+                        && cameraPosition.z >= box.minZ && cameraPosition.z <= box.maxZ;
+        if (inside) {
+            return true;
+        }
+        return switch (face) {
+            case DOWN -> cameraPosition.y < box.minY;
+            case UP -> cameraPosition.y > box.maxY;
+            case NORTH -> cameraPosition.z < box.minZ;
+            case SOUTH -> cameraPosition.z > box.maxZ;
+            case WEST -> cameraPosition.x < box.minX;
+            case EAST -> cameraPosition.x > box.maxX;
+        };
     }
 }
