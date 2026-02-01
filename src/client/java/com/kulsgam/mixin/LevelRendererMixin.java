@@ -218,7 +218,14 @@ public class LevelRendererMixin {
         double minY = bounds.minY;
         double maxY = bounds.maxY;
 
-        VertexConsumer lineConsumer = bufferSource.getBuffer(RenderLayers.lines());
+        RenderLayer outlineLayer = RenderLayer.of(
+                "block_overlay_outline",
+                RenderSetup.builder(RenderPipelines.LINES)
+                        .outputTarget(OutputTarget.OUTLINE_TARGET)
+                        .translucent()
+                        .build()
+        );
+        VertexConsumer lineConsumer = bufferSource.getBuffer(outlineLayer);
 
         int passes = Math.max(1, (int) lineWidth);
 
