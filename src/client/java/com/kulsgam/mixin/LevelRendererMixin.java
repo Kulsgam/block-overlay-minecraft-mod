@@ -9,6 +9,9 @@ import com.kulsgam.config.BlockOverlayConfig;
 import com.kulsgam.config.RenderSettings;
 import com.kulsgam.utils.ShaderStatus;
 import com.kulsgam.utils.enums.RenderMode;
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.*;
@@ -27,6 +30,8 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import static net.minecraft.client.gl.RenderPipelines.TRANSFORMS_PROJECTION_FOG_SNIPPET;
 
 @Mixin(WorldRenderer.class)
 public class LevelRendererMixin {
@@ -263,10 +268,11 @@ public class LevelRendererMixin {
             Direction selectedFace
     ) {
         int fillColor = fillSettings.getStart();
+//        RenderPipeline tmp = RenderPipeline.builder(new RenderPipeline.Snippet[]{TRANSFORMS_PROJECTION_FOG_SNIPPET}).withLocation("pipeline/lightning").withVertexShader("core/rendertype_lightning").withFragmentShader("core/rendertype_lightning").withBlend(BlendFunction.LIGHTNING).withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.QUADS).build();
 
         RenderLayer fillLayer = RenderLayer.of(
                 "block_overlay_fill",
-                RenderSetup.builder(RenderPipelines.RENDERTYPE_LIGHTNING)
+                RenderSetup.builder(RenderPipelines.DEBUG_QUADS)
                         .outputTarget(OutputTarget.MAIN_TARGET)
                         .translucent()
                         .build()

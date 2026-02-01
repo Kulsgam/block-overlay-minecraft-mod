@@ -1,6 +1,7 @@
 package com.kulsgam;
 
 import com.kulsgam.config.BlockOverlayConfig;
+import com.kulsgam.utils.IrisPipelineInitializer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockRenderLayerMap;
 import net.fabricmc.loader.api.FabricLoader;
@@ -35,6 +36,8 @@ public class BlockOverlayClient implements ClientModInitializer {
                 Fluids.LAVA,
                 Fluids.FLOWING_LAVA
         );
+
+        IrisPipelineInitializer.init();
 
 //        WorldRenderEvents.AFTER_ENTITIES.register(AllBlockOutlines::onAfterEntities);
     }
