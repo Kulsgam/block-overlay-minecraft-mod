@@ -10,7 +10,10 @@ import com.kulsgam.config.RenderSettings;
 import com.kulsgam.utils.ShaderStatus;
 import com.kulsgam.utils.enums.RenderMode;
 import net.minecraft.block.BlockState;
-import net.minecraft.client.gl.RenderPipelines;
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.state.OutlineRenderState;
 import net.minecraft.client.util.BufferAllocator;
@@ -20,7 +23,6 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,6 +30,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import com.mojang.blaze3d.platform.DepthTestFunction;
 
 @Mixin(WorldRenderer.class)
 public class LevelRendererMixin {
@@ -41,6 +44,25 @@ public class LevelRendererMixin {
     private final static float fillInset = 0.0005f;
     @Unique
     private final static float fullFillInsetPadding = 0.0005f;
+    @Unique
+    private static final RenderPipeline FILL_PIPELINE = RenderPipeline.builder(new RenderPipeline.Snippet[]{})
+            .withLocation("pipeline/block_overlay_fill")
+            .withVertexShader("core/position_color")
+            .withFragmentShader("core/position_color")
+            .withBlend(BlendFunction.TRANSLUCENT)
+            .withCull(false)
+            .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.QUADS)
+            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+            .withDepthWrite(false)
+            .build();
+    @Unique
+    private static final RenderLayer FILL_LAYER = RenderLayer.of(
+            "block_overlay_fill",
+            RenderSetup.builder(FILL_PIPELINE)
+                    .outputTarget(OutputTarget.OUTLINE_TARGET)
+                    .translucent()
+                    .build()
+    );
 
     @Inject(method = "drawBlockOutline", at = @At("HEAD"), cancellable = true)
     private void onRenderOverlay(
@@ -106,12 +128,6 @@ public class LevelRendererMixin {
             return;
         }
 
-        Vec3d cameraPosition = new Vec3d(
-                camX - blockPos.getX(),
-                camY - blockPos.getY(),
-                camZ - blockPos.getZ()
-        );
-
         matrices.push();
         matrices.translate(
                 (double) blockPos.getX() - camX,
@@ -135,8 +151,7 @@ public class LevelRendererMixin {
                         outlineSettings,
                         renderFill,
                         renderOutline,
-                        selectedFace,
-                        cameraPosition
+                        selectedFace
                 );
 
                 bufferSource.draw();
@@ -156,8 +171,7 @@ public class LevelRendererMixin {
                     outlineSettings,
                     renderFill,
                     renderOutline,
-                    selectedFace,
-                    cameraPosition
+                    selectedFace
             );
         }
         matrices.pop();
@@ -173,8 +187,7 @@ public class LevelRendererMixin {
             RenderSettings outlineSettings,
             boolean renderFill,
             boolean renderOutline,
-            Direction selectedFace,
-            Vec3d cameraPosition
+            Direction selectedFace
     ) {
         if (renderFill) {
             Direction fillSide =
@@ -192,9 +205,6 @@ public class LevelRendererMixin {
 
             Direction outlineSide =
                     outlineSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
-            boolean cullOutlineFaces = renderFill
-                    && fillSettings.renderMode == RenderMode.FULL
-                    && outlineSettings.renderMode == RenderMode.FULL;
 
             renderOutline(
                     bufferSource,
@@ -202,9 +212,7 @@ public class LevelRendererMixin {
                     matrices,
                     outlineSettings,
                     finalThickness,
-                    outlineSide,
-                    cullOutlineFaces,
-                    cameraPosition
+                    outlineSide
             );
         }
     }
@@ -227,8 +235,7 @@ public class LevelRendererMixin {
 
     @Unique
     private void renderOutline(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, MatrixStack matrices,
-                               RenderSettings outlineSettings, double thickness, Direction side,
-                               boolean cullOutlineFaces, Vec3d cameraPosition) {
+                               RenderSettings outlineSettings, double thickness, Direction side) {
         int startColor = outlineSettings.getStart();
         int endColor = outlineSettings.getEnd();
         float lineWidth = (float) thickness;
@@ -249,9 +256,6 @@ public class LevelRendererMixin {
                             .expand(LevelRendererMixin.offset + offset);
 
                     for (Direction face : Direction.values()) {
-                        if (cullOutlineFaces && !isFaceVisible(face, box, cameraPosition)) {
-                            continue;
-                        }
                         drawFaceOutline(
                                 lineConsumer,
                                 matrix,
@@ -288,14 +292,7 @@ public class LevelRendererMixin {
             float inset
     ) {
         int fillColor = fillSettings.getStart();
-        RenderLayer fillLayer = RenderLayer.of(
-                "block_overlay_fill",
-                RenderSetup.builder(RenderPipelines.DEBUG_QUADS)
-                        .outputTarget(OutputTarget.OUTLINE_TARGET)
-                        .translucent()
-                        .build()
-        );
-        VertexConsumer fillConsumer = bufferSource.getBuffer(fillLayer);
+        VertexConsumer fillConsumer = bufferSource.getBuffer(FILL_LAYER);
         Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
 
         shape.forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> {
@@ -469,21 +466,4 @@ public class LevelRendererMixin {
     }
 
     @Unique
-    private boolean isFaceVisible(Direction face, Box box, Vec3d cameraPosition) {
-        boolean inside =
-                cameraPosition.x >= box.minX && cameraPosition.x <= box.maxX
-                        && cameraPosition.y >= box.minY && cameraPosition.y <= box.maxY
-                        && cameraPosition.z >= box.minZ && cameraPosition.z <= box.maxZ;
-        if (inside) {
-            return true;
-        }
-        return switch (face) {
-            case DOWN -> cameraPosition.y < box.minY;
-            case UP -> cameraPosition.y > box.maxY;
-            case NORTH -> cameraPosition.z < box.minZ;
-            case SOUTH -> cameraPosition.z > box.maxZ;
-            case WEST -> cameraPosition.x < box.minX;
-            case EAST -> cameraPosition.x > box.maxX;
-        };
-    }
 }
