@@ -43,8 +43,6 @@ public class LevelRendererMixin {
     @Unique
     private final static float fillInset = 0.0005f;
     @Unique
-    private final static float fullFillInsetPadding = 0.0005f;
-    @Unique
     private static final RenderPipeline FILL_PIPELINE = RenderPipeline.builder(new RenderPipeline.Snippet[]{})
             .withLocation("pipeline/block_overlay_fill")
             .withVertexShader("core/position_color")
@@ -60,6 +58,24 @@ public class LevelRendererMixin {
             "block_overlay_fill",
             RenderSetup.builder(FILL_PIPELINE)
                     .outputTarget(OutputTarget.OUTLINE_TARGET)
+                    .translucent()
+                    .build()
+    );
+    @Unique
+    private static final RenderPipeline OUTLINE_LINE_PIPELINE = RenderPipeline.builder(new RenderPipeline.Snippet[]{})
+            .withLocation("pipeline/block_overlay_lines")
+            .withVertexShader("core/rendertype_lines")
+            .withFragmentShader("core/rendertype_lines")
+            .withBlend(BlendFunction.TRANSLUCENT)
+            .withCull(false)
+            .withVertexFormat(VertexFormats.POSITION_COLOR_NORMAL_LINE_WIDTH, VertexFormat.DrawMode.LINES)
+            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+            .withDepthWrite(false)
+            .build();
+    @Unique
+    private static final RenderLayer OUTLINE_LINE_LAYER = RenderLayer.of(
+            "block_overlay_lines",
+            RenderSetup.builder(OUTLINE_LINE_PIPELINE)
                     .translucent()
                     .build()
     );
@@ -193,8 +209,7 @@ public class LevelRendererMixin {
             Direction fillSide =
                     fillSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
 
-            float inset = getFillInset(config, fillSettings);
-            renderFill(bufferSource, shape, matrices, fillSettings, fillSide, inset);
+            renderFill(bufferSource, shape, matrices, fillSettings, fillSide, fillInset);
         }
 
         if (renderOutline) {
@@ -244,7 +259,7 @@ public class LevelRendererMixin {
         double minY = bounds.minY;
         double maxY = bounds.maxY;
 
-        VertexConsumer lineConsumer = bufferSource.getBuffer(RenderLayers.lines());
+        VertexConsumer lineConsumer = bufferSource.getBuffer(OUTLINE_LINE_LAYER);
 
         int passes = Math.max(1, (int) lineWidth);
 
@@ -456,14 +471,4 @@ public class LevelRendererMixin {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
-    @Unique
-    private float getFillInset(BlockOverlayConfig config, RenderSettings fillSettings) {
-        if (fillSettings.renderMode == RenderMode.SIDE) {
-            return fillInset;
-        }
-        double thickness = Math.max(1.0, Math.ceil(config.thickness));
-        return (float) (fillInset + offset + (offsetIncrement * thickness) + fullFillInsetPadding);
-    }
-
-    @Unique
 }
