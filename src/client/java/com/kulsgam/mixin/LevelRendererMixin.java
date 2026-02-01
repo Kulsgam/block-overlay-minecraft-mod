@@ -31,11 +31,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(WorldRenderer.class)
 public class LevelRendererMixin {
     @Unique
-    private static float offset = 0.001f;
+    private final static float offset = 0.001f;
     @Unique
-    private static float offsetIncrement = 0.001f;
+    private final static float offsetIncrement = 0.001f;
     @Unique
-    private static float shaderThicknessMultiplier = 10 / 3.5f;
+    private final static float shaderThicknessMultiplier = 10 / 3.5f;
+    @Unique
+    private final static float fillInset = 0.0005f;
 
     @Inject(method = "drawBlockOutline", at = @At("HEAD"), cancellable = true)
     private void onRenderOverlay(
@@ -263,11 +265,10 @@ public class LevelRendererMixin {
             Direction selectedFace
     ) {
         int fillColor = fillSettings.getStart();
-
         RenderLayer fillLayer = RenderLayer.of(
                 "block_overlay_fill",
-                RenderSetup.builder(RenderPipelines.RENDERTYPE_LIGHTNING)
-                        .outputTarget(OutputTarget.MAIN_TARGET)
+                RenderSetup.builder(RenderPipelines.DEBUG_QUADS)
+                        .outputTarget(OutputTarget.OUTLINE_TARGET)
                         .translucent()
                         .build()
         );
@@ -277,6 +278,10 @@ public class LevelRendererMixin {
         shape.forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> {
             Box expandedBox = new Box(minX, minY, minZ, maxX, maxY, maxZ)
                     .expand(offset);
+            // NOTE: I have forgotten the reason I expand the box for fill, but insetting seems to be working fine too
+            // But it seemed to fix some rendering issues earlier before I found the cause of the bug, so I'm going to leave it here
+//            Box expandedBox = new Box(minX, minY, minZ, maxX, maxY, maxZ)
+//                    .expand(-fillInset);
 
             if (selectedFace != null) {
                 float[][] faceVertices = getFaceVertices(selectedFace, expandedBox);
