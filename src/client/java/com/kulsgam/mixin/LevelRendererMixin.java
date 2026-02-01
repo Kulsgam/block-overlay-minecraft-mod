@@ -181,7 +181,7 @@ public class LevelRendererMixin {
                     fillSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
 
             float inset = getFillInset(config, fillSettings);
-            renderFill(bufferSource, shape, matrices, fillSettings, fillSide, inset, cameraPosition);
+            renderFill(bufferSource, shape, matrices, fillSettings, fillSide, inset);
         }
 
         if (renderOutline) {
@@ -192,6 +192,9 @@ public class LevelRendererMixin {
 
             Direction outlineSide =
                     outlineSettings.renderMode == RenderMode.SIDE ? selectedFace : null;
+            boolean cullOutlineFaces = renderFill
+                    && fillSettings.renderMode == RenderMode.FULL
+                    && outlineSettings.renderMode == RenderMode.FULL;
 
             renderOutline(
                     bufferSource,
@@ -199,7 +202,9 @@ public class LevelRendererMixin {
                     matrices,
                     outlineSettings,
                     finalThickness,
-                    outlineSide
+                    outlineSide,
+                    cullOutlineFaces,
+                    cameraPosition
             );
         }
     }
@@ -222,7 +227,8 @@ public class LevelRendererMixin {
 
     @Unique
     private void renderOutline(VertexConsumerProvider.Immediate bufferSource, VoxelShape shape, MatrixStack matrices,
-                               RenderSettings outlineSettings, double thickness, Direction side) {
+                               RenderSettings outlineSettings, double thickness, Direction side,
+                               boolean cullOutlineFaces, Vec3d cameraPosition) {
         int startColor = outlineSettings.getStart();
         int endColor = outlineSettings.getEnd();
         float lineWidth = (float) thickness;
@@ -243,6 +249,9 @@ public class LevelRendererMixin {
                             .expand(LevelRendererMixin.offset + offset);
 
                     for (Direction face : Direction.values()) {
+                        if (cullOutlineFaces && !isFaceVisible(face, box, cameraPosition)) {
+                            continue;
+                        }
                         drawFaceOutline(
                                 lineConsumer,
                                 matrix,
@@ -276,8 +285,7 @@ public class LevelRendererMixin {
             MatrixStack matrices,
             RenderSettings fillSettings,
             Direction selectedFace,
-            float inset,
-            Vec3d cameraPosition
+            float inset
     ) {
         int fillColor = fillSettings.getStart();
         RenderLayer fillLayer = RenderLayer.of(
@@ -304,9 +312,6 @@ public class LevelRendererMixin {
                         fillColor);
             } else {
                 for (Direction face : Direction.values()) {
-                    if (!isFaceVisible(face, expandedBox, cameraPosition)) {
-                        continue;
-                    }
                     float[][] faceVertices = getFaceVertices(face, expandedBox);
                     emitQuad(fillConsumer, positionMatrix,
                             faceVertices[0], faceVertices[1],
